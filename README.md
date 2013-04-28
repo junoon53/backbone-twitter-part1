@@ -1,7 +1,4 @@
-Introduction to Backbone Part 1 - Client Side
-=============================================
-
-A twitter client side applciation written in backbone.js as part of a screencast available here: http://youtu.be/2BDGBJUtAmo.
+Clinic Feedback Form
 
 Run
 =====
