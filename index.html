@@ -2,73 +2,178 @@
 <html>
 	<head>
 		<meta charset="utf-8" />
-		<title>Backbone Twitter</title>
+		<title>Daily Feedback Form</title>
 		<style>
-			.author {
-				text-decoration: underline;
+			.column {
+				margin-top: 10px;
+				margin-right: 10px;
+				margin-bottom: 10px;
+				display:inline-block;
+				width: 200px;
+				padding: 5px;
+				border: solid 1px gray;
+			}
+			
+			.tableHeaderColumn {
+				display:inline-block;
+				font-weight: bold;
+				font-size: 23px;
+				padding: 10px;
+				margin-right: 10px;
+				width: 200px;
+			}
+
+			.column_prefix {
+				margin-right: 10px;
+			}
+
+			a {
+				text-decoration: none;
 			}
 		</style>
 	</head>
 	<body>
-		<h1>Backbone for Twitter</h1>
+		<h1>Revenue</h1>
 
-		<form id="new-tweet">
-			<label>Author:</label><input id="author-name" name="author-name" type="text" />
-			<label>Status:</label><input id="status-update" name="status-update" type="text" />
-			<button>Post</button>
+		<form id="new-row">
+			<button>New Entry </button>
 		</form>
 		<hr />
-		<div id="tweets-container"></div>
+		<label class="tableHeaderColumn">Patient</label>
+		<label class="tableHeaderColumn">Doctor</label>
+		<label class="tableHeaderColumn">Amount</label>
+		<label class="tableHeaderColumn">Cash or Card?</label>
+
+		<div id="rows-container"></div>
 
 		<script src="/underscore.js"></script>
 		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js"></script>
 		<script src="/backbone.js"></script>
 		<script>
 			(function($) {
-				var Tweet = Backbone.Model.extend({
+				var Row = Backbone.Model.extend({
 					defaults: function() {
 						return {
-							author: '',
-							status: ''
+							patient: '',
+							doctor: '',
+							amount:0,
+							cash_credit:"CASH"
 						}
 					}
 				});
-				var TweetsList = Backbone.Collection.extend({
-					model: Tweet
+				var RowsList = Backbone.Collection.extend({
+					model: Row,
+					total: function() {
+						this._total = 0;
+						var self = this;
+						_.each(this.models,function(row, i) {
+							 self._total+= parseInt(row.get("amount"),10);
+						});
+						return this._total;
+					},
+					totalCash: function(){
+						this._total = 0;
+						var self = this;
+						_.each(this.models,function(row, i) {
+							if(row.get("cash_credit")==="CASH")
+							 self._total+= parseInt(row.get("amount"),10);
+						});
+						return this._total;
+					},
+					totalCard: function(){
+						this._total = 0;
+						var self = this;
+						_.each(this.models,function(row, i) {
+							if(row.get("cash_credit")==="CARD")
+							 self._total+= parseInt(row.get("amount"),10);
+						});
+						return this._total;
+					},
 				});
-				var tweets = new TweetsList();
+				var rows = new RowsList();
 
-				var TweetView = Backbone.View.extend({
-					model: new Tweet(),
+				var RowView = Backbone.View.extend({
+					model: new Row(),
 					tagName: 'div',
 					events: {
-						'click .edit': 'edit',
+						'click .column': 'edit',
 						'click .delete': 'delete',
-						'blur .status': 'close',
-						'keypress .status': 'onEnterUpdate'
+						'blur .column': 'close',
+						'keypress .column': 'onEnterUpdate'					
 					},
 					initialize: function() {
-						this.template = _.template($('#tweet-template').html());
+						this.template = _.template($('#row-template').html());
 					},
 					edit: function(ev) {
+
 						ev.preventDefault();
-						this.$('.status').attr('contenteditable', true).focus();
+						switch(ev.currentTarget.className){
+							case "patient column":
+								this.$('.patient').attr('contenteditable', true).focus();
+								break;
+							case "doctor column":
+								this.$('.doctor').attr('contenteditable', true).focus();
+								break;
+							case "amount column":
+								this.$('.amount').attr('contenteditable', true).focus();
+								break;
+							case "cash_credit column":
+								this.$('.cash_credit').attr('contenteditable', true).focus();
+								break;
+						}
+					
 					},
 					close: function(ev) {
-						var status = this.$('.status').text();
-						this.model.set('status', status);
-						this.$('.status').removeAttr('contenteditable');
+
+					    //console.log(this.$('.patient').text());
+
+						switch(ev.currentTarget.className){
+							case "patient column":
+								this.model.set('patient', this.$('.patient').text());
+								this.$('.patient').removeAttr('contenteditable');
+								break;
+							case "doctor column":
+								this.model.set('doctor', this.$('.doctor').text());
+								this.$('.doctor').removeAttr('contenteditable');
+								break;
+							case "amount column":
+								this.model.set('amount', this.$('.amount').text());
+								this.$('.amount column').removeAttr('contenteditable');
+								break;
+							case "cash_credit column":
+								this.model.set('cash_credit', this.$('.cash_credit').text());
+								this.$('.cash_credit').removeAttr('contenteditable');
+								break;
+						}
+
+
 					},
 					onEnterUpdate: function(ev) {
 						var self = this;
+					  //console.log("onEnterUpdate called");
 						if (ev.keyCode === 13) {
-							this.close();
-							_.delay(function() { self.$('.status').blur() }, 100);
+							this.close(ev);
+
+							switch(ev.currentTarget.className){
+							case "patient column":
+								_.delay(function() { self.$('.patient').blur() }, 100);
+								break;
+							case "doctor column":
+								_.delay(function() { self.$('.doctor').blur() }, 100);
+								break;
+							case "amount column":
+								_.delay(function() { self.$('.amount').blur() }, 100);
+								break;
+							case "cash_credit column":
+								_.delay(function() { self.$('.cash_credit').blur() }, 100);
+								break;
+							}
+							
 						}
 					},
 					delete: function(ev) {
 						ev.preventDefault();
-						tweets.remove(this.model);
+						rows.remove(this.model);
 					},
 					render: function() {
 						this.$el.html(this.template(this.model.toJSON()));
@@ -76,9 +181,9 @@
 					}
 				});
 
-				var TweetsView = Backbone.View.extend({
-					model: tweets,
-					el: $('#tweets-container'),
+				var TableView = Backbone.View.extend({
+					model: rows,
+					el: $('#rows-container'),
 					initialize: function() {
 						this.model.on('add', this.render, this);
 						this.model.on('remove', this.render, this);
@@ -86,34 +191,39 @@
 					render: function() {
 						var self = this;
 						self.$el.html('');
-						_.each(this.model.toArray(), function(tweet, i) {
-							self.$el.append((new TweetView({model: tweet})).render().$el);
+						_.each(this.model.toArray(), function(row, i) {
+							self.$el.append((new RowView({model: row})).render().$el);
 						});
 						return this;
 					}
 				});
 
+				
+
 				$(document).ready(function() {
-					$('#new-tweet').submit(function(ev) {
-						var tweet = new Tweet({ author: $('#author-name').val(), status: $('#status-update').val() });
-						tweets.add(tweet);
-						console.log(tweets.toJSON());
-						
+					$('#new-row').submit(function(ev) {
+						var row = new Row({ patient: "patient", doctor: "doctor",amount:0,cash_credit:"CASH" });
+						rows.add(row);
+						console.log(rows.toJSON());
+						console.log(rows.total());
+						console.log(rows.totalCard());
 						return false;		
 					});
-					
-					var appView = new TweetsView();
+						
+					var appView = new TableView();
+					rows.add(new Row({patient: "patient",doctor:"doctor",amount:0,cash_credit:"CASH"}));
 				});
 				
 			})(jQuery);
 		</script>
 
 		<!-- Templates -->
-		<script type="text/template" id="tweet-template">
-			<span class="author"><%= author %>:</span>
-			<span class="status"><%= status %></span>
-			<a href="#" class="edit">[edit]</a>
-			<a href="#" class="delete">[delete]</a>
+		<script type="text/template" id="row-template">
+			<span class="patient column"><%= patient %></span>
+			<span class="doctor column"><%= doctor %></span>
+			<span class="column_prefix">Rs</span><span class="amount column"><%= amount %></span>
+			<span class="cash_credit column"><%= cash_credit %></span>
+			<a href="#" class="delete">[ x ]</a>
 		</script>
 	</body>
 </html>
