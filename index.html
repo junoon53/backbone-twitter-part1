@@ -3,6 +3,8 @@
 	<head>
 		<meta charset="utf-8" />
 		<title>Daily Feedback Form</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 		<link href="./css/bootstrap.css" rel="stylesheet" type="text/css"/>
 		<style>
 			.column {
@@ -48,7 +50,7 @@
 		<div id="rows-container"></div>
 
 		<script src="/underscore.js"></script>
-		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js"></script>
+		<script src="/jquery-1.8.2.js"></script>
 		<script src="/backbone.js"></script>
 		<script src="/bootstrap.js"></script>
 		<script>
@@ -56,13 +58,20 @@
 				var Row = Backbone.Model.extend({
 					defaults: function() {
 						return {
-							patient: '',
-							doctor: '',
+							patientName: '',
+							patientId:'',
+							doctorName: '',
+							doctorId:'',
 							amount:0,
-							cash_credit:"CASH"
+							paymentTypeName:"CASH",
+							paymentTypeId:0,
+							rowId:0
 						}
 					}
 				});
+
+				var row = new Row();
+
 				var RowsList = Backbone.Collection.extend({
 					model: Row,
 					total: function() {
@@ -77,7 +86,7 @@
 						this._total = 0;
 						var self = this;
 						_.each(this.models,function(row, i) {
-							if(row.get("cash_credit")==="CASH")
+							if(row.get("paymentTypeName")==="CASH")
 							 self._total+= parseInt(row.get("amount"),10);
 						});
 						return this._total;
@@ -86,17 +95,23 @@
 						this._total = 0;
 						var self = this;
 						_.each(this.models,function(row, i) {
-							if(row.get("cash_credit")==="CARD")
+							if(row.get("paymentTypeName")==="CARD")
 							 self._total+= parseInt(row.get("amount"),10);
 						});
 						return this._total;
 					},
+					rowCount: function(){
+						return this.models.length;
+					}
 				});
+
 				var rows = new RowsList();
 
 				var RowView = Backbone.View.extend({
 					model: new Row(),
 					tagName: 'div',
+					className: 'revenueRow',
+					//id: this.cid,
 					events: {
 						'click .column': 'edit',
 						'click .delete': 'delete',
@@ -107,44 +122,44 @@
 						this.template = _.template($('#row-template').html());
 					},
 					edit: function(ev) {
-
+					    console.log(ev);
 						ev.preventDefault();
 						switch(ev.currentTarget.className){
-							case "patient column":
-								this.$('.patient').attr('contenteditable', true).focus();
+							case "patientName column":
+								this.$('.patientName').attr('contenteditable', true).focus();
 								break;
-							case "doctor column":
-								this.$('.doctor').attr('contenteditable', true).focus();
+							case "doctorName column":
+								this.$('.doctorName').attr('contenteditable', true).focus();
 								break;
 							case "amount column":
 								this.$('.amount').attr('contenteditable', true).focus();
 								break;
-							case "cash_credit column":
-								this.$('.cash_credit').attr('contenteditable', true).focus();
+							case "paymentTypeName column":
+								this.$('.paymentTypeName').attr('contenteditable', true).focus();
 								break;
 						}
 					
 					},
 					close: function(ev) {
-
-					    //console.log(this.$('.patient').text());
-
 						switch(ev.currentTarget.className){
-							case "patient column":
-								this.model.set('patient', this.$('.patient').text());
-								this.$('.patient').removeAttr('contenteditable');
+							case "patientName column":
+								this.model.set('patientName', this.$('.patientName').attr("value"));
+								this.model.set('patientId',this.$('#patientId'+this.model.get("rowId")).attr("value"));
+								this.$('.patientName').removeAttr('contenteditable');
 								break;
-							case "doctor column":
-								this.model.set('doctor', this.$('.doctor').text());
-								this.$('.doctor').removeAttr('contenteditable');
+							case "doctorName column":
+								this.model.set('doctorName', this.$('.doctorName').attr("value"));
+								this.model.set('doctorId', this.$('#doctorId'+this.model.get("rowId")).attr("value"));
+								this.$('.doctorName').removeAttr('contenteditable');
 								break;
 							case "amount column":
-								this.model.set('amount', this.$('.amount').text());
+								this.model.set('amount', this.$('.amount').attr("value"));
 								this.$('.amount column').removeAttr('contenteditable');
 								break;
-							case "cash_credit column":
-								this.model.set('cash_credit', this.$('.cash_credit').text());
-								this.$('.cash_credit').removeAttr('contenteditable');
+							case "paymentTypeName column":
+								this.model.set('paymentTypeName', this.$('.paymentTypeName').attr("value"));
+								this.model.set('paymentTypeId', this.$('#paymentTypeId'+this.model.get("rowId")).attr("value"));
+								this.$('.paymentTypeName').removeAttr('contenteditable');
 								break;
 						}
 
@@ -152,22 +167,22 @@
 					},
 					onEnterUpdate: function(ev) {
 						var self = this;
-					  //console.log("onEnterUpdate called");
+					    console.log("onEnterUpdate called");
 						if (ev.keyCode === 13) {
 							this.close(ev);
 
 							switch(ev.currentTarget.className){
-							case "patient column":
-								_.delay(function() { self.$('.patient').blur() }, 100);
+							case "patientName column":
+								_.delay(function() { self.$('.patientName').blur() }, 100);
 								break;
-							case "doctor column":
-								_.delay(function() { self.$('.doctor').blur() }, 100);
+							case "doctorName column":
+								_.delay(function() { self.$('.doctorName').blur() }, 100);
 								break;
 							case "amount column":
 								_.delay(function() { self.$('.amount').blur() }, 100);
 								break;
-							case "cash_credit column":
-								_.delay(function() { self.$('.cash_credit').blur() }, 100);
+							case "paymentTypeName column":
+								_.delay(function() { self.$('.paymentTypeName').blur() }, 100);
 								break;
 							}
 							
@@ -178,6 +193,7 @@
 						rows.remove(this.model);
 					},
 					render: function() {
+						this.model.set("rowId",this.model.cid);
 						this.$el.html(this.template(this.model.toJSON()));
 						return this;
 					}
@@ -203,29 +219,87 @@
 				
 
 				$(document).ready(function() {
-					$('#new-row').submit(function(ev) {
-						var row = new Row({ patient: "patient", doctor: "doctor",amount:0,cash_credit:"CASH" });
+
+					var patientData = [{name:"Vikram Pawar",id:1000},{name:"Vasant Pawar",id:1001},{name:"Ankit Verma",id:1002},{name:"Arjun Singh",id:1003}];
+				    var doctorData = [{name:"Sunita Chauhan",id:1000},{name:"Divya Gaur",id:1001},{name:"Mehwash Malhotra",id:1002},{name:"Chunkey Pandey",id:1003}];
+				    var cashCreditOptions = [{name:"CASH",value:0},{name:"CARD",value:1}];
+   
+				    var patientMap = {};
+				    var doctorsMap = {};
+				    var paymentOptionsMap = {};
+
+				    function addNewRow() {
+				    	var row = new Row({patientName: "", patientId:0, doctorName:"",doctorId:0,amount:0,paymentTypeName:"CASH",paymentTypeId:0,rowId:0});
+
 						rows.add(row);
+						$('.patientName').typeahead({source:patientsSource,updater:updater,minLength:3,hiddenFieldId:"patientId"+row.cid,map:patientMap});
+						$('.doctorName').typeahead({source:doctorsSource,updater:updater,minLength:3,hiddenFieldId:"doctorId"+row.cid,map:doctorsMap});
+						$('.paymentTypeName').typeahead({source:paymentOptionsSource,updater:updater,minLength:3,hiddenFieldId:"paymentTypeId"+row.cid,map:paymentOptionsMap});
+						console.log("new row added: "+row.get("rowId"));
+					}
+
+					var source = function(data, map) {
+						//console.log("source called");
+						var result = [];
+						_.each(data,function(element,index,data){
+							 
+							 element.name = element.name+' # '+(element.id ||element.value);
+							 result.push(element.name);
+							 map[element.name] = (element.id||element.value);
+
+
+						});
+
+						return result;
+					};
+
+					var patientsSource = source(patientData,patientMap);
+					var doctorsSource = source(doctorData,doctorsMap);
+					var paymentOptionsSource = source(cashCreditOptions,paymentOptionsMap);
+
+					
+
+					var updater = function(item){
+						console.log("hiddenFieldId: "+this.options.hiddenFieldId);
+						console.log("value: "+ this.options.map[item]);
+						console.log("#"+this.options.hiddenFieldId);
+						 $( "#"+this.options.hiddenFieldId ).val( this.options.map[ item ] );
+						 return item;
+					};
+
+					$('#new-row').submit(function(ev) {
+
+						addNewRow();
 						console.log(rows.toJSON());
 						console.log(rows.total());
-						console.log(rows.totalCard());
+						//console.log(rows.totalCard());
 						return false;		
 					});
 						
 					var appView = new TableView();
-					rows.add(new Row({patient: "patient",doctor:"doctor",amount:0,cash_credit:"CASH"}));
-				});
+					addNewRow();
+
+					});
 				
 			})(jQuery);
 		</script>
-
+                      
 		<!-- Templates -->
 		<script type="text/template" id="row-template">
-			<span class="patient column"><%= patient %></span>
-			<span class="doctor column"><%= doctor %></span>
-			<span class="column_prefix">Rs</span><span class="amount column"><%= amount %></span>
-			<span class="cash_credit column"><%= cash_credit %></span>
-			<a href="#" class="delete">[ x ]</a>
+			<input type="text" class="patientName column" data-provide="typeahead" autocomplete="off" value= <%= "'"+patientName+"'" %> /> 
+			<input type="hidden" name="patientId" id= <%= "'patientId"+rowId+"'" %> value= <%= "'"+patientId+"'" %> />			
+			
+						
+			<input type="text" class="doctorName column"  data-provide="typeahead" autocomplete="off"  value= <%= "'"+doctorName+"'" %> />
+			<input type="hidden" name="doctorId" id= <%= "'doctorId"+rowId+"'" %> value= <%= "'"+doctorId+"'" %> />	
+
+			<span class="column_prefix">Rs</span>
+			<input type="text" class="amount column" autocomplete="off" value= <%= "'"+amount+"'" %> />
+
+			<input type="text" class="paymentTypeName column" data-provide="typeahead" autocomplete="off"  value= <%= "'"+paymentTypeName+"'" %> />
+			<input type="hidden" name="paymentTypeId" id= <%= "'paymentTypeId"+rowId+"'" %> value=  <%= "'"+paymentTypeId+"'" %> />
+
+			<a href="#" class="delete"><i class="icon-remove"></i></a>
 		</script>
 	</body>
 </html>
