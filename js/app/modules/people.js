@@ -32,6 +32,7 @@ CDF.Views.People.AddPatient = Backbone.View.extend({
 			// close modal
 		}});
 
+		CDF.modal.hide();
 	}
 
 

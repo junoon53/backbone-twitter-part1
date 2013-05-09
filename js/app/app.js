@@ -75,7 +75,10 @@ CDF.Models.Application = Backbone.Model.extend({
 CDF.Views.AppView  = Backbone.View.extend({
     el: $('#main'),
     events: {
-        //'click a': 'handleNavClick'
+        'click li#revenue a': 'revenue',
+        'click li#submit a': 'submit',
+        'click li#logout a': 'logout',
+
     },
     initialize: function(){
         this.template = _.template($('#app-template').html());
@@ -91,7 +94,46 @@ CDF.Views.AppView  = Backbone.View.extend({
     addView: function(view){
         this.$el.append(view.$el);
     },
+    revenue: function() {
+        this.$('ul.nav li#revenue').attr("class","active");
+        CDF.revenueView = new CDF.Views.Revenue.RevenueTableView({model: CDF.revenueRowsList}).render();
+        CDF.mainView.attachView(CDF.revenueView);
+        },
+    submit: function(){
+        if(!CDF.modal.isVisible()){
+          var modalModel = new CDF.Models.Utility.Modal({header:"Submit Report",footer:(new CDF.Views.Submit()).$el,body:"Phew! That was a lot of work! Well, looks like we're ready to submit! Do check if your inputs are correct before pressing the button."});
+          CDF.modal = new CDF.Views.Utility.Modal({model:modalModel});
+          CDF.appView.addView(CDF.modal);
+          CDF.modal.show();
+        }
+    },
+    logout: function(){
+         CDF.auth.loggedIn = false;
+         CDF.revenueRowsList.reset();
+         CDF.router.index();
+  }
+});
 
+CDF.Views.Submit = Backbone.View.extend({
+    events: {
+        'click .submit' : 'submit'
+    },
+    initialize: function(){
+       this.template =  _.template($("#submit-template").html());
+       this.$el.html(this.template({})); 
+    },
+    submit: function(ev){
+        ev.preventDefault();
+        _.each(CDF.revenueRowsList.models,function(element,index,data){
+             if(parseInt(element.get('patientId'),10)>0){
+                element.save();
+             }
+        });
+        CDF.modal.hide();
+        CDF.revenueRowsList.reset();
+        CDF.mainView = null;
+        CDF.router.index();
+    },
 });
 
 CDF.Models.Utility.Modal = Backbone.Model.extend({

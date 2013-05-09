@@ -79,23 +79,23 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 		ev.preventDefault();
 		switch(ev.currentTarget.className.split(" ")[0]){
 			case "patientName":
-				this.$('.patientName').removeAttr('readonly').focus();
-				this.$('#patientId'+this.model.get("rowId")).val(CDF.CONSTANTS.NULL);
+				//this.$('.removeAttr').patientName('readonly').focus();
+				this.$('.patientName').attr("valueId", CDF.CONSTANTS.NULL);
 				this.model.set("patientId",CDF.CONSTANTS.NULL);
 				this.$('.patientName').val("");
 				break;
 			case "doctorName":
-				this.$('.doctorName').removeAttr('readonly').focus();
-				this.$('#doctorId'+this.model.get("rowId")).val(CDF.CONSTANTS.NULL);	
+				//this.$('.doctorName').removeAttr('readonly').focus();
+				this.$('.doctorName').attr("valueId", CDF.CONSTANTS.NULL);	
 				this.model.set("doctorId",CDF.CONSTANTS.NULL);
 				this.$('.doctorName').val("");				
 				break;
 			case "amount":
-				this.$('.amount').removeAttr('readonly').focus();
+				//this.$('.amount').removeAttr('readonly').focus();
 				break;
 			case "paymentTypeName":
-				this.$('.paymentTypeName').removeAttr('readonly', true).focus();
-				this.$('#doctorId'+this.model.get("rowId")).val(0);
+				//this.$('.paymentTypeName').removeAttr('readonly', true).focus();
+				this.$('.paymentTypeName').attr("valueId", 0);
 				this.model.set("paymentTypeId",0);	
 				this.$('.paymentTypeName').val("");			
 				break;
@@ -117,6 +117,7 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 			case "amount":
 				element = this.$('.amount');
 				setElementValue.call(this);
+				CDF.revenueView.updateTotal();
 				break;
 			case "paymentTypeName":
 				element = this.$('.paymentTypeName');
@@ -138,10 +139,10 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 					}					
 					
 				if(typeof propertyId !== "undefined"){
-					var propertyValue = this.$('#'+propertyId+this.model.get("rowId")).attr("value");
+					var propertyValue = element.attr("valueId");
 					if(propertyValue !== CDF.CONSTANTS.NULL) {
 						this.model.set(propertyId,propertyValue);
-						element.attr('readonly',true);
+						//element.attr('readonly',true);
 					} else this.whenValueIsNotSelected(propertyId,element.attr("value"));
 				}
 											
@@ -179,7 +180,6 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 	},
 	onEnterUpdate: function(ev) {
 		var self = this;
-	    console.log("onEnterUpdate called");
 		if (ev.keyCode === 13) {
 			this.close(ev);
 
@@ -243,7 +243,7 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 	},
 	updater: function(item){
 		 
-	 	 $( "#"+this.options.hiddenFieldId ).val( this.options.map[ item ] );
+	 	 $( "#"+this.options.id ).attr("valueId", this.options.map[ item ] );
 		 return item;
  
 	},
@@ -251,9 +251,9 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 		this.model.set("rowId",this.model.cid,{silent:true});
 		this.$el.html(this.template(this.model.toJSON()));
 
-		this.$('.patientName').typeahead({source:this.source(CDF.patients),updater:this.updater,minLength:3,hiddenFieldId:"patientId"+this.model.cid,map:CDF.patientMap});
-		this.$('.doctorName').typeahead({source:this.source(CDF.doctors),updater:this.updater,minLength:3,hiddenFieldId:"doctorId"+this.model.cid,map:CDF.doctorsMap});
-		this.$('.paymentTypeName').typeahead({source:this.paymentOptionsSource(CDF.paymentOptions),updater:this.updater,minLength:3,hiddenFieldId:"paymentTypeId"+this.model.cid,map:CDF.paymentOptionsMap});
+		this.$('.patientName').typeahead({source:this.source(CDF.patients),updater:this.updater,minLength:3,id:"patientId"+this.model.cid,map:CDF.patientMap});
+		this.$('.doctorName').typeahead({source:this.source(CDF.doctors),updater:this.updater,minLength:3,id:"doctorId"+this.model.cid,map:CDF.doctorsMap});
+		this.$('.paymentTypeName').typeahead({source:this.paymentOptionsSource(CDF.paymentOptions),updater:this.updater,minLength:3,id:"paymentTypeId"+this.model.cid,map:CDF.paymentOptionsMap});
 		return this;
 	}
 	
@@ -262,8 +262,7 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 CDF.Views.Revenue.RevenueTableView = Backbone.View.extend({
 	model: CDF.revenueRowsList,
     events: {
-		'click .new-row' : 'handleNewRowSubmit',
-		'click .submit' : 'handleSubmitSubmit'
+		'click .new-row' : 'handleNewRowSubmit'		
     },
 	initialize: function() {
 		this.template = _.template($('#revenue-table-template').html());
@@ -276,25 +275,9 @@ CDF.Views.Revenue.RevenueTableView = Backbone.View.extend({
 	},
 	handleNewRowSubmit: function(ev){
 		ev.preventDefault();
-		console.log(this.model.toJSON());
 		this.addNewRow();
-		
-		//console.log(rows.total());
-		//console.log(rows.totalCard());
-		
 		return false;
-	},
-	handleSubmitSubmit: function(ev){
-		ev.preventDefault();
-		_.each(this.model.models,function(element,index,data){
-		 	 if(parseInt(element.get('patientId'),10)>0){
-		 	 	element.save();
-		 	 }
-		});
-		
-		return false;		
-
-	},
+	},	
 	addNewRow: function() {
     	var row = new CDF.Models.Revenue.RevenueRow({patientName: "", patientId:CDF.CONSTANTS.NULL, doctorName:"",doctorId:CDF.CONSTANTS.NULL,amount:0,paymentTypeName:"CASH",
     												 paymentTypeId:0,rowId:0,clinicId:CDF.application.get("clinicId"),date:CDF.application.get("date")});
@@ -318,5 +301,8 @@ CDF.Views.Revenue.RevenueTableView = Backbone.View.extend({
 		});
 		this.$('.total').text("Total : Rs. "+this.model.total());
 		return this;
+	},
+	updateTotal: function(){
+		this.$('.total').text("Total : Rs. "+this.model.total());
 	}
 });

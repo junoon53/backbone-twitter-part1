@@ -80,18 +80,14 @@
       </form>
     </script>
     <script type="text/template" id="revenue-row-template">
-      <input type="text" class="patientName column" data-toggle="tooltip" data-provide="typeahead" autocomplete="off" value= <%= "'"+patientName+"'" %> /> 
-      <input type="hidden" name="patientId" id= <%= "'patientId"+rowId+"'" %> value= <%= "'"+patientId+"'" %> />      
-      
-            
-      <input type="text" class="doctorName column"  data-provide="typeahead" autocomplete="off"  value= <%= "'"+doctorName+"'" %> />
-      <input type="hidden" name="doctorId" id= <%= "'doctorId"+rowId+"'" %> value= <%= "'"+doctorId+"'" %> /> 
+      <input type="text" class="patientName  column" id= <%= "'patientId"+rowId+"'" %> data-toggle="tooltip" data-provide="typeahead" autocomplete="off" value= <%= "'"+patientName+"'" %>  valueId= <%= "'"+patientId+"'" %> /> 
+ 
+      <input type="text" class="doctorName column" id= <%= "'doctorId"+rowId+"'" %> data-provide="typeahead" autocomplete="off"  value= <%= "'"+doctorName+"'" %>  valueId= <%= "'"+doctorId+"'" %> />
 
       <span class="column_prefix">Rs</span>
       <input type="text" class="amount column" autocomplete="off" value= <%= "'"+amount+"'" %> />
 
-      <input type="text" class="paymentTypeName column" data-provide="typeahead" autocomplete="off"  value= <%= "'"+paymentTypeName+"'" %> />
-      <input type="hidden" name="paymentTypeId" id= <%= "'paymentTypeId"+rowId+"'" %> value=  <%= "'"+paymentTypeId+"'" %> />
+      <input type="text" class="paymentTypeName column"  id= <%= "'paymentTypeId"+rowId+"'" %> data-provide="typeahead" autocomplete="off"  value= <%= "'"+paymentTypeName+"'" %>  valueId=  <%= "'"+paymentTypeId+"'" %>  />
 
       <a href="#revenue" class="delete"><i class="icon-remove"></i></a>
     </script>
@@ -107,7 +103,7 @@
       <hr />
       <label class="total tableHeaderColumn"></label>
       <hr/>
-      <button class="btn btn-primary submit" type="button">Submit</button>
+      
     </script>
     <script type="text/template" id="app-template">
       <div class="navbar navbar-inverse navbar-fixed-top">
@@ -120,7 +116,7 @@
                 <li class="dropdown">
                   <a href="#" class="dropdown-toggle" data-toggle="dropdown"><%= userName %> <b class="caret"></b></a>
                   <ul class="dropdown-menu">
-                    <li><a href="#logout">Logout</a></li>
+                    <li id="logout"><a href="#">Logout</a></li>
                   </ul>
                 </li> 
                 <li class="divider-vertical"></li>                
@@ -142,14 +138,14 @@
             <div class="well sidebar-nav">
               <ul class="nav nav-list">
                 <li class="nav-header">Sections</li>
-                <li><a href="#revenue" id="revenue">Revenue</a></li>
-                <li><a href="#" id="bank-deposits">Bank Deposits</a></li>
-                <li><a href="#" id="expenditure">Expenditure</a></li>
-                <li><a href="#" id="dental-materials-needed-recieved">Dental Materials Needed/Received</a></li>
-                <li><a href="#" id="patients-feedback">Patients Feedback</a></li>
-                <li><a href="#" id="complaints-or-problems-in-clinic">Complaints or Problems in Clinic</a></li>
-                <li><a href="#" id="treatments">Treatments</a></li>
-                <li><a href="#" id="submit">Submit</a></li>
+                <li id="revenue"><a href="#" >Revenue</a></li>
+                <li id="bank-deposits"><a href="#" >Bank Deposits</a></li>
+                <li id="expenditure"><a href="#" >Expenditure</a></li>
+                <li id="dental-materials-needed-recieved" ><a href="#" >Dental Materials Needed/Received</a></li>
+                <li id="patients-feedback"><a href="#" >Patients Feedback</a></li>
+                <li id="complaints-or-problems-in-clinic"><a href="#" >Complaints or Problems in Clinic</a></li>
+                <li id="treatments"><a href="#" >Treatments</a></li>
+                <li id="submit"><a href="#" >Submit</a></li>
 
               </ul>
             </div><!--/.well -->
@@ -166,6 +162,9 @@
         </footer>
 
       </div><!--/.fluid-container-->
+    </script>
+    <script type="text/template" id="submit-template">
+      <button class="btn btn-primary submit" type="button">Submit</button>
     </script>
 
     <!-- Le javascript

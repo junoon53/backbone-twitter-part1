@@ -1,9 +1,10 @@
 CDF.Router = Backbone.Router.extend({
 
   routes: {
-    "":                 "index",    
-    "revenue":          "revenue", 
-    "logout":           "logout"
+    "":                  "index",    
+    /*"revenue":          "revenue",
+    "submit":           "submit",  
+    "logout":           "logout"*/
   },
 
   index: function(){
@@ -19,7 +20,10 @@ CDF.Router = Backbone.Router.extend({
            CDF.application.setUser(CDF.auth.firstName+" "+CDF.auth.lastName);
            CDF.application.setDate(new Date());
            CDF.appView = new CDF.Views.AppView({model: CDF.application})
+           CDF.revenueView = new CDF.Views.Revenue.RevenueTableView({model: CDF.revenueRowsList}).render();
+           CDF.appView.attachView(CDF.revenueView);
            CDF.mainView = CDF.appView;
+           $('ul.nav li#revenue').attr("class","active");
         },error: function(){
            $("#main").html("We can't reach the server right now. Please try again in a bit");
         }});
@@ -28,16 +32,6 @@ CDF.Router = Backbone.Router.extend({
       CDF.authView = new CDF.Views.AuthView({model: CDF.auth});
       CDF.mainView = CDF.authView;
     }
-  },
-  revenue: function() {
-
-    CDF.revenueView = new CDF.Views.Revenue.RevenueTableView({model: CDF.revenueRowsList}).render();
-    CDF.mainView.attachView(CDF.revenueView);
-  },
-  logout: function(){
-    CDF.auth.loggedIn = false;
-    CDF.revenueRowsList.reset();
-    this.index();
   }
 });
 
