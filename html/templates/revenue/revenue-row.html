@@ -1,0 +1,14 @@
+<input type="text" class="patientName column" data-toggle="tooltip" data-provide="typeahead" autocomplete="off" value= <%= "'"+patientName+"'" %> /> 
+<input type="hidden" name="patientId" id= <%= "'patientId"+rowId+"'" %> value= <%= "'"+patientId+"'" %> />      
+
+      
+<input type="text" class="doctorName column"  data-provide="typeahead" autocomplete="off"  value= <%= "'"+doctorName+"'" %> />
+<input type="hidden" name="doctorId" id= <%= "'doctorId"+rowId+"'" %> value= <%= "'"+doctorId+"'" %> /> 
+
+<span class="column_prefix">Rs</span>
+<input type="text" class="amount column" autocomplete="off" value= <%= "'"+amount+"'" %> />
+
+<input type="text" class="paymentTypeName column" data-provide="typeahead" autocomplete="off"  value= <%= "'"+paymentTypeName+"'" %> />
+<input type="hidden" name="paymentTypeId" id= <%= "'paymentTypeId"+rowId+"'" %> value=  <%= "'"+paymentTypeId+"'" %> />
+
+<a href="#" class="delete"><i class="icon-remove"></i></a>

@@ -5,7 +5,7 @@ var libpath = require('path'),
     mime = require('mime');
 
 var path = ".";
-var port = 3000;
+//var port = 3000;
 
 http.createServer(function (request, response) {
 
@@ -44,6 +44,6 @@ http.createServer(function (request, response) {
             response.end();
         });
     });
-}).listen(port);
+}).listen(80);
 
-console.log("Server running on port " + port);
+console.log("Server running");

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Daily Feedback Form</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<link href="./css/bootstrap.css" rel="stylesheet" type="text/css"/>
+		<link href="./css/style.css" rel="stylesheet" type="text/css"/>
+	</head>
+	<body>
+		
+		<!-- Libraries -->
+		<script src="./js/lib/underscore.js"></script>
+		<script src="./js/lib/jquery.js"></script>
+		<script src="./js/lib/backbone.js"></script>
+		<script src="./js/lib/bootstrap.js"></script>
+	
+
+		<div class="container" id="main">
+			
+		</div>
+
+		<!-- Modules -->
+		<script src="./js/app/modules/people.js"></script>
+		<script src="./js/app/modules/revenue.js"></script>
+		
+		<!-- Application -->
+		<script src="./js/app/app.js"></script>
+
+                    
+		<!-- Templates -->
+		<script type="text/template" id="row-template">
+			<input type="text" class="patientName column" data-toggle="tooltip" data-provide="typeahead" autocomplete="off" value= <%= "'"+patientName+"'" %> /> 
+			<input type="hidden" name="patientId" id= <%= "'patientId"+rowId+"'" %> value= <%= "'"+patientId+"'" %> />			
+			
+						
+			<input type="text" class="doctorName column"  data-provide="typeahead" autocomplete="off"  value= <%= "'"+doctorName+"'" %> />
+			<input type="hidden" name="doctorId" id= <%= "'doctorId"+rowId+"'" %> value= <%= "'"+doctorId+"'" %> />	
+
+			<span class="column_prefix">Rs</span>
+			<input type="text" class="amount column" autocomplete="off" value= <%= "'"+amount+"'" %> />
+
+			<input type="text" class="paymentTypeName column" data-provide="typeahead" autocomplete="off"  value= <%= "'"+paymentTypeName+"'" %> />
+			<input type="hidden" name="paymentTypeId" id= <%= "'paymentTypeId"+rowId+"'" %> value=  <%= "'"+paymentTypeId+"'" %> />
+
+			<a href="#" class="delete"><i class="icon-remove"></i></a>
+		</script>
+		<script type="text/template" id="table-template">
+			<h2>Revenue</h2>	
+			<label class="tableHeaderColumn">Patient</label> 
+			<label class="tableHeaderColumn">Doctor</label>
+			<label class="tableHeaderColumn">Amount</label>
+			<label class="tableHeaderColumn">Cash or Card?</label>
+
+			<div id="rows-container"></div>
+			<form id="new-row">
+				<button>New Entry </button>
+			</form>
+			<hr />
+			<label class="total tableHeaderColumn"></label>
+	 		<hr/>
+	 		<form id="submit">
+				<button>Submit</button>
+			</form>
+		</script>
+		<script type="text/template" id="app-template">
+			<div>
+				<a class="brand" href="#">Clinic Feedback Form</a>
+			</div>
+			<div class="container">
+				<div class="menu ">
+					<ul class="nav">
+					  <li><a href="#">Revenue</a></li>
+					  <li><a href="#">Bank Deposits</a></li>
+					  <li><a href="#">Expenditure</a></li>
+					  <li><a href="#">Dental Materials Needed/Received</a></li>
+					  <li><a href="#">Patients Feedback</a></li>
+					  <li><a href="#">Complaints or Problems in Clinic</a></li>
+					  <li><a href="#">Treatments</a></li>
+					</ul>
+				</div>
+				<div class="content"></div>
+			</div>
+		</script>
+	</body>
+</html>

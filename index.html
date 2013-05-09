@@ -1,305 +1,190 @@
-<!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="utf-8" />
-		<title>Daily Feedback Form</title>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Feedback System - Colonels Dental First</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
 
-		<link href="./css/bootstrap.css" rel="stylesheet" type="text/css"/>
-		<style>
-			.column {
-				margin-top: 10px;
-				margin-right: 10px;
-				margin-bottom: 10px;
-				display:inline-block;
-				width: 200px;
-				padding: 5px;
-				border: solid 1px gray;
-			}
-			
-			.tableHeaderColumn {
-				display:inline-block;
-				font-weight: bold;
-				font-size: 23px;
-				padding: 10px;
-				margin-right: 10px;
-				width: 200px;
-			}
+    <!-- Le styles -->
+    <link href="./css/bootstrap.css" rel="stylesheet" type="text/css"/>
+    <link href="./css/style.css" rel="stylesheet" type="text/css"/>
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+      .sidebar-nav {
+        padding: 9px 0;
+      }
 
-			.column_prefix {
-				margin-right: 10px;
-			}
+      @media (max-width: 980px) {
+        /* Enable use of floated navbar text */
+        .navbar-text.pull-right {
+          float: none;
+          padding-left: 5px;
+          padding-right: 5px;
+        }
+      }
+    </style>
+    <link href="./css/bootstrap-responsive.css" rel="stylesheet">
 
-			a {
-				text-decoration: none;
-			}
-		</style>
-	</head>
-	<body>
-		<h1>Revenue</h1>
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="../assets/js/html5shiv.js"></script>
+    <![endif]-->
 
-		<form id="new-row">
-			<button>New Entry </button>
-		</form>
-		<hr />
-		<label class="tableHeaderColumn">Patient</label>
-		<label class="tableHeaderColumn">Doctor</label>
-		<label class="tableHeaderColumn">Amount</label>
-		<label class="tableHeaderColumn">Cash or Card?</label>
+  </head>
 
-		<div id="rows-container"></div>
+  <body>
 
-		<script src="/underscore.js"></script>
-		<script src="/jquery-1.8.2.js"></script>
-		<script src="/backbone.js"></script>
-		<script src="/bootstrap.js"></script>
-		<script>
-			(function($) {
-				var Row = Backbone.Model.extend({
-					defaults: function() {
-						return {
-							patientName: '',
-							patientId:'',
-							doctorName: '',
-							doctorId:'',
-							amount:0,
-							paymentTypeName:"CASH",
-							paymentTypeId:0,
-							rowId:0
-						}
-					}
-				});
-
-				var row = new Row();
-
-				var RowsList = Backbone.Collection.extend({
-					model: Row,
-					total: function() {
-						this._total = 0;
-						var self = this;
-						_.each(this.models,function(row, i) {
-							 self._total+= parseInt(row.get("amount"),10);
-						});
-						return this._total;
-					},
-					totalCash: function(){
-						this._total = 0;
-						var self = this;
-						_.each(this.models,function(row, i) {
-							if(row.get("paymentTypeName")==="CASH")
-							 self._total+= parseInt(row.get("amount"),10);
-						});
-						return this._total;
-					},
-					totalCard: function(){
-						this._total = 0;
-						var self = this;
-						_.each(this.models,function(row, i) {
-							if(row.get("paymentTypeName")==="CARD")
-							 self._total+= parseInt(row.get("amount"),10);
-						});
-						return this._total;
-					},
-					rowCount: function(){
-						return this.models.length;
-					}
-				});
-
-				var rows = new RowsList();
-
-				var RowView = Backbone.View.extend({
-					model: new Row(),
-					tagName: 'div',
-					className: 'revenueRow',
-					//id: this.cid,
-					events: {
-						'click .column': 'edit',
-						'click .delete': 'delete',
-						'blur .column': 'close',
-						'keypress .column': 'onEnterUpdate'					
-					},
-					initialize: function() {
-						this.template = _.template($('#row-template').html());
-					},
-					edit: function(ev) {
-					    console.log(ev);
-						ev.preventDefault();
-						switch(ev.currentTarget.className){
-							case "patientName column":
-								this.$('.patientName').attr('contenteditable', true).focus();
-								break;
-							case "doctorName column":
-								this.$('.doctorName').attr('contenteditable', true).focus();
-								break;
-							case "amount column":
-								this.$('.amount').attr('contenteditable', true).focus();
-								break;
-							case "paymentTypeName column":
-								this.$('.paymentTypeName').attr('contenteditable', true).focus();
-								break;
-						}
-					
-					},
-					close: function(ev) {
-						switch(ev.currentTarget.className){
-							case "patientName column":
-								this.model.set('patientName', this.$('.patientName').attr("value"));
-								this.model.set('patientId',this.$('#patientId'+this.model.get("rowId")).attr("value"));
-								this.$('.patientName').removeAttr('contenteditable');
-								break;
-							case "doctorName column":
-								this.model.set('doctorName', this.$('.doctorName').attr("value"));
-								this.model.set('doctorId', this.$('#doctorId'+this.model.get("rowId")).attr("value"));
-								this.$('.doctorName').removeAttr('contenteditable');
-								break;
-							case "amount column":
-								this.model.set('amount', this.$('.amount').attr("value"));
-								this.$('.amount column').removeAttr('contenteditable');
-								break;
-							case "paymentTypeName column":
-								this.model.set('paymentTypeName', this.$('.paymentTypeName').attr("value"));
-								this.model.set('paymentTypeId', this.$('#paymentTypeId'+this.model.get("rowId")).attr("value"));
-								this.$('.paymentTypeName').removeAttr('contenteditable');
-								break;
-						}
+    <div class="container-fluid" id="main"></div>
 
 
-					},
-					onEnterUpdate: function(ev) {
-						var self = this;
-					    console.log("onEnterUpdate called");
-						if (ev.keyCode === 13) {
-							this.close(ev);
+    <!-- Templates -->
+    <script type="text/template" id="add-doctor-template">
+     <form id="login-form">
+          First Name: <input type="text" id="firstname"><br>
+          Last Name: <input type="text" id="lastname"><br>
+          Clinic: <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown"><%= selectedClinicName %> <b class="caret"></b></a>
+                    <ul class="dropdown-menu"></ul>
+                  </li> 
+          <button id="add-doctor-button">Add Doctor</button>
+      </form>
+    </script>
+    <script type="text/template" id="add-patient-template">
+     <form id="login-form">
+          First Name: <input type="text" id="firstname"><br>
+          Last Name: <input type="text" id="lastname"><br>          
+          <button id="add-patient-button">Add Patient</button>
+      </form>
+    </script>
+    <script type="text/template" id="modal-template">
+      <div id="myModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
+        <div class="modal-header">
+          <h2></h2>
+        </div>
+        <div class="modal-body">
+        </div>
+        <div class="modal-footer">
+        </div>
+      </div>
+    </script>
+    <script type="text/template" id="login-template">
+      <form id="login-form">
+        Username: <input type="text" id="username"><br>
+        Password: <input type="password" id="password"><br>
+        <button id="login">Login</button>
+      </form>
+    </script>
+    <script type="text/template" id="revenue-row-template">
+      <input type="text" class="patientName column" data-toggle="tooltip" data-provide="typeahead" autocomplete="off" value= <%= "'"+patientName+"'" %> /> 
+      <input type="hidden" name="patientId" id= <%= "'patientId"+rowId+"'" %> value= <%= "'"+patientId+"'" %> />      
+      
+            
+      <input type="text" class="doctorName column"  data-provide="typeahead" autocomplete="off"  value= <%= "'"+doctorName+"'" %> />
+      <input type="hidden" name="doctorId" id= <%= "'doctorId"+rowId+"'" %> value= <%= "'"+doctorId+"'" %> /> 
 
-							switch(ev.currentTarget.className){
-							case "patientName column":
-								_.delay(function() { self.$('.patientName').blur() }, 100);
-								break;
-							case "doctorName column":
-								_.delay(function() { self.$('.doctorName').blur() }, 100);
-								break;
-							case "amount column":
-								_.delay(function() { self.$('.amount').blur() }, 100);
-								break;
-							case "paymentTypeName column":
-								_.delay(function() { self.$('.paymentTypeName').blur() }, 100);
-								break;
-							}
-							
-						}
-					},
-					delete: function(ev) {
-						ev.preventDefault();
-						rows.remove(this.model);
-					},
-					render: function() {
-						this.model.set("rowId",this.model.cid);
-						this.$el.html(this.template(this.model.toJSON()));
-						return this;
-					}
-				});
+      <span class="column_prefix">Rs</span>
+      <input type="text" class="amount column" autocomplete="off" value= <%= "'"+amount+"'" %> />
 
-				var TableView = Backbone.View.extend({
-					model: rows,
-					el: $('#rows-container'),
-					initialize: function() {
-						this.model.on('add', this.render, this);
-						this.model.on('remove', this.render, this);
-					},
-					render: function() {
-						var self = this;
-						self.$el.html('');
-						_.each(this.model.toArray(), function(row, i) {
-							self.$el.append((new RowView({model: row})).render().$el);
-						});
-						return this;
-					}
-				});
+      <input type="text" class="paymentTypeName column" data-provide="typeahead" autocomplete="off"  value= <%= "'"+paymentTypeName+"'" %> />
+      <input type="hidden" name="paymentTypeId" id= <%= "'paymentTypeId"+rowId+"'" %> value=  <%= "'"+paymentTypeId+"'" %> />
 
-				
+      <a href="#revenue" class="delete"><i class="icon-remove"></i></a>
+    </script>
+    <script type="text/template" id="revenue-table-template">
+      <h2>Revenue</h2>  
+      <label class="tableHeaderColumn">Patient</label> 
+      <label class="tableHeaderColumn">Doctor</label>
+      <label class="tableHeaderColumn">Amount</label>
+      <label class="tableHeaderColumn">Cash or Card?</label>
 
-				$(document).ready(function() {
+      <div id="rows-container"></div>
+      <button class="btn btn-small new-row" type="button"><i class="icon-plus"></i>Add Row</button>      
+      <hr />
+      <label class="total tableHeaderColumn"></label>
+      <hr/>
+      <button class="btn btn-primary submit" type="button">Submit</button>
+    </script>
+    <script type="text/template" id="app-template">
+      <div class="navbar navbar-inverse navbar-fixed-top">
+        <div class="navbar-inner">
+          <div class="container-fluid">
+            <a class="brand" href="#">Clinic Feedback Form</a>
+            <div class="nav-collapse collapse">
+              <ul class="nav pull-right">
+                <li><a href="#"><%= displayDate %></a> </li>
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown"><%= userName %> <b class="caret"></b></a>
+                  <ul class="dropdown-menu">
+                    <li><a href="#logout">Logout</a></li>
+                  </ul>
+                </li> 
+                <li class="divider-vertical"></li>                
+                <li><a href="#"><%= clinicName %></a></li>
+              </ul>
+              <ul class="nav">
+                <!--<li class="active"><a href="#">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>-->
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
 
-					var patientData = [{name:"Vikram Pawar",id:1000},{name:"Vasant Pawar",id:1001},{name:"Ankit Verma",id:1002},{name:"Arjun Singh",id:1003}];
-				    var doctorData = [{name:"Sunita Chauhan",id:1000},{name:"Divya Gaur",id:1001},{name:"Mehwash Malhotra",id:1002},{name:"Chunkey Pandey",id:1003}];
-				    var cashCreditOptions = [{name:"CASH",value:0},{name:"CARD",value:1}];
-   
-				    var patientMap = {};
-				    var doctorsMap = {};
-				    var paymentOptionsMap = {};
+      <div class="container-fluid">
+        <div class="row-fluid">
+          <div class="span2">
+            <div class="well sidebar-nav">
+              <ul class="nav nav-list">
+                <li class="nav-header">Sections</li>
+                <li><a href="#revenue" id="revenue">Revenue</a></li>
+                <li><a href="#" id="bank-deposits">Bank Deposits</a></li>
+                <li><a href="#" id="expenditure">Expenditure</a></li>
+                <li><a href="#" id="dental-materials-needed-recieved">Dental Materials Needed/Received</a></li>
+                <li><a href="#" id="patients-feedback">Patients Feedback</a></li>
+                <li><a href="#" id="complaints-or-problems-in-clinic">Complaints or Problems in Clinic</a></li>
+                <li><a href="#" id="treatments">Treatments</a></li>
+                <li><a href="#" id="submit">Submit</a></li>
 
-				    function addNewRow() {
-				    	var row = new Row({patientName: "", patientId:0, doctorName:"",doctorId:0,amount:0,paymentTypeName:"CASH",paymentTypeId:0,rowId:0});
+              </ul>
+            </div><!--/.well -->
+          </div><!--/span-->
+          <div class="span10">
+            <div class="content"><h3>Welcome! Please choose an option on the left!</h3></div>
+          </div><!--/span-->
+        </div><!--/row-->
 
-						rows.add(row);
-						$('.patientName').typeahead({source:patientsSource,updater:updater,minLength:3,hiddenFieldId:"patientId"+row.cid,map:patientMap});
-						$('.doctorName').typeahead({source:doctorsSource,updater:updater,minLength:3,hiddenFieldId:"doctorId"+row.cid,map:doctorsMap});
-						$('.paymentTypeName').typeahead({source:paymentOptionsSource,updater:updater,minLength:3,hiddenFieldId:"paymentTypeId"+row.cid,map:paymentOptionsMap});
-						console.log("new row added: "+row.get("rowId"));
-					}
+        <hr>
 
-					var source = function(data, map) {
-						//console.log("source called");
-						var result = [];
-						_.each(data,function(element,index,data){
-							 
-							 element.name = element.name+' # '+(element.id ||element.value);
-							 result.push(element.name);
-							 map[element.name] = (element.id||element.value);
+        <footer>
+          <p>&copy; Colonels Dental First 2013</p>
+        </footer>
 
+      </div><!--/.fluid-container-->
+    </script>
 
-						});
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <!-- Libraries -->
+    <script src="./js/lib/underscore.js"></script>
+    <script src="./js/lib/jquery.js"></script>
+    <script src="./js/lib/backbone.js"></script>
+    <script src="./js/lib/bootstrap.js"></script>
+    <!-- Application -->
+    <script src="./js/app/app.js"></script>
+    <!-- Router -->
+    <script src="./js/app/router.js"></script>
+    <!-- Modules -->
+    <script src="./js/app/modules/people.js"></script>
+    <script src="./js/app/modules/revenue.js"></script>
+    <script src="./js/app/modules/infra.js"></script>
+    <script src="./js/app/modules/auth.js"></script>
 
-						return result;
-					};
-
-					var patientsSource = source(patientData,patientMap);
-					var doctorsSource = source(doctorData,doctorsMap);
-					var paymentOptionsSource = source(cashCreditOptions,paymentOptionsMap);
-
-					
-
-					var updater = function(item){
-						console.log("hiddenFieldId: "+this.options.hiddenFieldId);
-						console.log("value: "+ this.options.map[item]);
-						console.log("#"+this.options.hiddenFieldId);
-						 $( "#"+this.options.hiddenFieldId ).val( this.options.map[ item ] );
-						 return item;
-					};
-
-					$('#new-row').submit(function(ev) {
-
-						addNewRow();
-						console.log(rows.toJSON());
-						console.log(rows.total());
-						//console.log(rows.totalCard());
-						return false;		
-					});
-						
-					var appView = new TableView();
-					addNewRow();
-
-					});
-				
-			})(jQuery);
-		</script>
-                      
-		<!-- Templates -->
-		<script type="text/template" id="row-template">
-			<input type="text" class="patientName column" data-provide="typeahead" autocomplete="off" value= <%= "'"+patientName+"'" %> /> 
-			<input type="hidden" name="patientId" id= <%= "'patientId"+rowId+"'" %> value= <%= "'"+patientId+"'" %> />			
-			
-						
-			<input type="text" class="doctorName column"  data-provide="typeahead" autocomplete="off"  value= <%= "'"+doctorName+"'" %> />
-			<input type="hidden" name="doctorId" id= <%= "'doctorId"+rowId+"'" %> value= <%= "'"+doctorId+"'" %> />	
-
-			<span class="column_prefix">Rs</span>
-			<input type="text" class="amount column" autocomplete="off" value= <%= "'"+amount+"'" %> />
-
-			<input type="text" class="paymentTypeName column" data-provide="typeahead" autocomplete="off"  value= <%= "'"+paymentTypeName+"'" %> />
-			<input type="hidden" name="paymentTypeId" id= <%= "'paymentTypeId"+rowId+"'" %> value=  <%= "'"+paymentTypeId+"'" %> />
-
-			<a href="#" class="delete"><i class="icon-remove"></i></a>
-		</script>
-	</body>
+  </body>
 </html>
