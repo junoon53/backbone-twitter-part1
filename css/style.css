@@ -32,3 +32,22 @@ select.input-validation-error
     background: #FEF1EC;
     border: 1px solid #CD0A0A;
 }
+
+i.delete-row-icon {
+	margin-left: 10px;
+	margin-top: 5px;
+}
+
+i {
+	margin-right: 5px;
+}
+
+#datetimepicker {
+	margin-top: 5px;
+	margin-bottom: 5px;
+
+}
+
+#datetimepicker input {
+	width: 80px;
+}

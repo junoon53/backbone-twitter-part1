@@ -20,7 +20,8 @@ var DoctorsSchema = new Schema({firstName:String,lastName:String, _id: Number,ac
 var paymentOptionSchema = new Schema({name:String,_id:Number});
 var revenueSchema = new Schema({_id:Number,date:Date,clinicId:Number,patientId:Number,doctorId:Number,amount:Number,paymentOptionId:Number});
 var ClinicSchema = new Schema({_id:Number,name:String,shortName:String});
-var UserSchema = new Schema({_id:Object,username:String,password:String,firstName:String,lastName:String,clinics:Array});
+var UserSchema = new Schema({_id:Object,username:String,password:String,firstName:String,lastName:String,clinics:Array,roleId:Number,doctorId:Number,administratorId:Number});
+var DailyFeedbackSchema = new Schema({_id:Object,clinicId:Number,date:Date,doctorId:Number});
 
 // Use the schema to register a model with MongoDb
 mongoose.model('Patient',PatientsSchema,'patients');
@@ -35,6 +36,47 @@ mongoose.model('Clinic',ClinicSchema,'clinics');
 var clinics = mongoose.model('Clinic');
 mongoose.model('User',UserSchema,'users');
 var users = mongoose.model('User');
+mongoose.model('DailyFeedback',DailyFeedbackSchema,'dailyfeedback');
+var dailyFeedback = mongoose.model('DailyFeedback');
+
+
+function checkFeedbackStatus(req,res,next){
+	console.log('checking daily feedback status for date: '+ req.query.date);
+	res.header("Access-Control-Allow-Origin","*");
+	res.header("Access-Control-Allow-Headers","X-Requested-With");
+	var startDate = new Date(req.query.date);
+	startDate.setHours(0);
+	startDate.setMinutes(0);
+	startDate.setSeconds(0);
+	startDate.setMilliseconds(0);
+	console.log(startDate);
+	var endDate = new Date(startDate.getTime());
+	endDate.setHours(24);
+	console.log(endDate);
+
+	var clinicId = parseInt(req.query.clinicId,0);
+	console.log(clinicId);
+
+	dailyFeedback.find({date:{$gte: startDate, $lt: endDate},clinicId:clinicId}).execFind(function(err,data){
+			console.log(data);
+			res.send(data);
+	});
+};
+
+function saveFeedbackStatus(req,res,next){
+	console.log('saving feedback status for date: '+ req.params.date);
+	res.header("Access-Control-Allow-Origin","*");
+	res.header("Access-Control-Allow-Headers","X-Requested-With");
+	var feedback = new dailyFeedback();
+	feedback.date = req.params.date;
+	feedback.clinicId = req.params.clinicId;
+	feedback.doctorId = req.params.doctorId;
+
+	feedback.save(function(){
+			res.send(req.body);
+		});
+};
+
 
 function auth(req,res,next){
 	console.log('authenticating...'+ req.params.username + " " + req.params.password);
@@ -43,9 +85,23 @@ function auth(req,res,next){
 	var username = req.params.username;
 	var password = req.params.password;
 
-	users.find({username:username,password:password}).execFind(function(err,data){
+	users.find({username:username,password:password}).lean().execFind(function(err,data){
+		if(data.length){
+		   var authData = data;
+			var primaryClinicId = authData[0].clinics[0];
+			var primaryClinicName = "";
+			clinics.find({_id:primaryClinicId}).lean().execFind(function(err,clinicsData){
+				
+		    	sendData(clinicsData[0].name);
+			});
+		}
+
+		function sendData(clinicName){
+			authData[0].primaryClinicName = clinicName;
+			console.log(authData[0]);
+			res.send(authData);
+		}
 		
-		res.send(data);
 	});
 };
 
@@ -63,8 +119,9 @@ function saveRevenue(req,res,next){
 
 	revenue.count({},function(err,count){
 		revenueEntry._id = count;
-		revenueEntry.save(function(){
-			res.send(req.body);
+		revenueEntry.save(function(err,data){
+		    if(err) res.send(err);
+		    else res.send(data);
 		});
 	});	
 
@@ -148,6 +205,8 @@ function addNewDoctor(req,res,next){
 	doctor.firstName = req.params.firstName;
 	doctor.lastName = req.params.lastName;
 	doctor.id = req.params.firstName.toUpperCase()+" "+req.params.lastName.toUpperCase();
+	doctor.active = 1;
+	doctor.clinics = req.params.clinics;
 
 	doctors.count({},function(err,count){
 		doctor._id = 1001+count;
@@ -177,7 +236,7 @@ function addNewPatient(req,res,next){
 
 // set up our routes and start the server 
 server.get('/doctors',getDoctors);
-server.put('/doctors',addNewDoctor);
+server.post('/doctors',addNewDoctor);
 
 server.get('/patients',getPatients);
 server.post('/patients',addNewPatient);
@@ -191,6 +250,9 @@ server.post('/clinics',saveClinic);
 server.get('/clinics',getClinics);
 
 server.post('/auth',auth);
+
+server.get('/feedback',checkFeedbackStatus);
+server.post('/feedback',saveFeedbackStatus);
 
 function unknownMethodHandler(req, res) {
   if (req.method.toLowerCase() === 'options') {

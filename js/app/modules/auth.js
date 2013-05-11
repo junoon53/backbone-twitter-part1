@@ -6,47 +6,77 @@ CDF.Models.Auth = Backbone.Model.extend({
 		firstName:"",
 		lastName:"",
 		password:"",
-		clinics:[]
-	}
+		clinics:[],
+        doctorId:"",
+        roleId:"",
+        administratorId:"", 
+        _id:"",
+        primaryClinicName:""
+	},
+    initialize: function() {
+        var self = this;
+        CDF.vent.on('CDF.Views.AppView:handleLogoutClick',this.logout,this);
+    },
+    onClose: function(){
+        CDF.vent.off('CDF.Views.AppView:handleLogoutClick',this.logout,this);
+    },
+    logout: function(){
+
+        this.set('loggedIn',false);
+        CDF.loggedIn = false;
+    },
+    login: function(){
+        var self = this;
+        var user=  $("#username").val();
+        var pword = $("#password").val();
+        this.save({username:user,password:pword},{
+            success: function(model,response,options){
+                if(response.length){
+                    model.set({'loggedIn':true,
+                               'firstName':response[0].firstName,
+                                'lastName':response[0].lastName,
+                                'clinics':response[0].clinics,
+                                'doctorId':response[0].doctorId,
+                                'roleId':response[0].roleId,
+                                '_id':response[0]._id,
+                                'primaryClinicName':response[0].primaryClinicName
+                    });
+                    CDF.loggedIn = true;
+                    CDF.vent.trigger('CDF.Models.Auth:login:success',model);
+                } else {
+                    alert("Invalid Credentials!");
+                }
+            },
+            error: function(model,xhr,options){
+
+            }
+        });
+        return false;
+    },
 });
 
 
 
 CDF.Views.AuthView = Backbone.View.extend({
-	model: CDF.auth,
-	el: $('#main'),
+	model: new CDF.Models.Auth(),
+	//el: $('#main'),
 	events: {
-        "click #login": "login"
+        "click #login": "handleLoginClick"
   	},
 	initialize: function(){
 		var self = this;
         this.template = _.template($('#login-template').html());
         this.$el.html(this.template({}));           
     },
+    onClose: function(){
+        
+    },
     render: function(){
         return this;
     },
-    login: function(ev){
-    	ev.preventDefault();
-        var user=  $("#username").val();
-        var pword = $("#password").val();
-        this.model.save({username:user,password:pword},{
-        	success: function(model,response,options){
-        		if(response.length){
-        			model.loggedIn = true;
-        			model.firstName = response[0].firstName;
-        			model.lastName = response[0].lastName;
-        			model.clinics = response[0].clinics;
-        			CDF.router.index();
-        		} else {
-        			alert("Invalid Credentials!");
-        		}
-        	},
-        	error: function(model,xhr,options){
-
-        	}
-    	});
-        return false;
-  	}
+    handleLoginClick: function(ev){
+        ev.preventDefault();
+        this.model.login();
+    }
 });
 

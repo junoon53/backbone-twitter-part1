@@ -15,11 +15,19 @@ CDF.Models.Revenue.RevenueRow = Backbone.Model.extend({
 		}
 	},
 	validate: function(attrs, options) {
-		var isValid = true;
 		this.validationError = "";
 
+		if(attrs.patientId === CDF.CONSTANTS.NULL) 
+			this.validationError += "No patient selected!\r\n"
 
-	    if(!isValid)
+		if(attrs.doctorId === CDF.CONSTANTS.NULL) 
+			this.validationError += "No doctor selected!\r\n"
+
+		if(parseInt(attrs.amount,10) <= 0) 
+			this.validationError += "Invalid amount!\r\n"
+
+
+	    if(this.validationError.length>0)
 	     return this.validationError;
 	},
 	
@@ -28,6 +36,15 @@ CDF.Models.Revenue.RevenueRow = Backbone.Model.extend({
 CDF.Collections.Revenue.RevenueRowList = Backbone.Collection.extend({
 	url: 'http://192.168.211.132:8080/revenue',
 	model: CDF.Models.Revenue.RevenueRow,
+	initialize: function(){
+		var self = this;
+
+		//_.bindAll(this,'resetMe'/*, 'submitReport'*/);
+		CDF.vent.on('CDF.Models.Application:postReportStatus', this.reset, this);
+		CDF.vent.on('CDF.Views.AppView:handleLogoutClick', this.reset, this);
+		CDF.vent.on('CDF.Models.Application:submitReport', this.submitReport, this);
+
+    },
 	total: function() {
 		this._total = 0;
 		var self = this;
@@ -56,7 +73,29 @@ CDF.Collections.Revenue.RevenueRowList = Backbone.Collection.extend({
 	},
 	rowCount: function(){
 		return this.models.length;
-	}
+	},
+	submitReport: function(msg){
+		_.each(_.reject(this.models,function(element){return !element.isValid()},this),function(element,index,data){
+                element.set('date',msg.date,{silent:true});   
+                element.set('clinicId',msg.clinicId,{silent:true});
+                element.save({},{
+
+                    success: function(model, response, options){
+                        console.log(response);
+
+                        if(index === data.length - 1) {
+                        	CDF.vent.trigger('CDF.Collections.RevenueRowList:submitReport','revenue');
+                        }
+                    },
+                    error: function(model, error, options){
+                        console.log(error);
+                        success = false;
+                    }
+
+                });
+        });
+        
+    }
 });
 
 
@@ -70,10 +109,14 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 		'click .column': 'edit',
 		'click .delete': 'delete',
 		'blur .column': 'close',
-		'keypress .column': 'onEnterUpdate'					
+		'keypress .column': 'onEnterUpdate',
+		'click ul.dropdown-menu li': 'updatePaymentType'					
 	},
 	initialize: function() {
 		this.template = _.template($('#revenue-row-template').html());
+	},
+	onClose: function(){
+
 	},
 	edit: function(ev) {
 		ev.preventDefault();
@@ -81,13 +124,13 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 			case "patientName":
 				//this.$('.removeAttr').patientName('readonly').focus();
 				this.$('.patientName').attr("valueId", CDF.CONSTANTS.NULL);
-				this.model.set("patientId",CDF.CONSTANTS.NULL);
+				this.model.set("patientId",CDF.CONSTANTS.NULL,{silent:true});
 				this.$('.patientName').val("");
 				break;
 			case "doctorName":
 				//this.$('.doctorName').removeAttr('readonly').focus();
 				this.$('.doctorName').attr("valueId", CDF.CONSTANTS.NULL);	
-				this.model.set("doctorId",CDF.CONSTANTS.NULL);
+				this.model.set("doctorId",CDF.CONSTANTS.NULL,{silent:true});
 				this.$('.doctorName').val("");				
 				break;
 			case "amount":
@@ -96,7 +139,7 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 			case "paymentTypeName":
 				//this.$('.paymentTypeName').removeAttr('readonly', true).focus();
 				this.$('.paymentTypeName').attr("valueId", 0);
-				this.model.set("paymentTypeId",0);	
+				this.model.set("paymentTypeId",0,{silent:true});	
 				this.$('.paymentTypeName').val("");			
 				break;
 		}
@@ -117,7 +160,7 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 			case "amount":
 				element = this.$('.amount');
 				setElementValue.call(this);
-				CDF.revenueView.updateTotal();
+				CDF.vent.trigger('CDF.Views.Revenue.RevenueRowView:close:amount');
 				break;
 			case "paymentTypeName":
 				element = this.$('.paymentTypeName');
@@ -128,8 +171,8 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 		function setElementValue(propertyId){
 
 			if(element !== null){				
-				this.model.set(propertyName, element.attr("value"));
-				if (!this.model.isValid()) {
+				this.model.set(propertyName, element.attr("value"),{silent:true});
+				if (false/*validate model*/) {
 				 	element.addClass( 'input-validation-error' );
 				 	//this.$('.revenueRow').tooltip({title:this.model.validationError,container:'.revenueRow',trigger:'hover'});
 				 	//this.$('.patientName').tooltip('show');
@@ -141,9 +184,9 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 				if(typeof propertyId !== "undefined"){
 					var propertyValue = element.attr("valueId");
 					if(propertyValue !== CDF.CONSTANTS.NULL) {
-						this.model.set(propertyId,propertyValue);
+						this.model.set(propertyId,propertyValue,{silent:true});
 						//element.attr('readonly',true);
-					} else this.whenValueIsNotSelected(propertyId,element.attr("value"));
+					} else if(element.attr("value").trim().length > 0) this.whenValueIsNotSelected(propertyId,element.attr("value"));
 				}
 											
 				
@@ -153,29 +196,26 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 
 	},
 	whenValueIsNotSelected : function(propertyId,propertyName){
-		if(!CDF.modal.isVisible()){
-
-		}
-
-
+		
 		switch(propertyId){
 			case "patientId":
 				this.addNewPatient(propertyName);
 				break;
 			case "doctorId":
+				this.addNewDoctor(propertyName);
 				break;
 			case "paymentTypeId":
 				break;
 		}
 	},
 	addNewPatient: function(propertyName){
-		if(!CDF.modal.isVisible()){
-			var names = propertyName.split(" ");
-			var addPatientView = new CDF.Views.People.AddPatient({model: new CDF.Models.People.Patient({firstName:names[0],lastName:names[1]})});		
-			var modalModel = new CDF.Models.Utility.Modal({header:"Add Patient",footer:"",body:addPatientView.$el});
-			CDF.modal = new CDF.Views.Utility.Modal({model:modalModel});
-			CDF.appView.addView(CDF.modal);
-			CDF.modal.show();
+		if(!CDF.isModalVisible){
+			CDF.vent.trigger('CDF.Views.Revenue.RevenueRowView:addNewPatient',{patientNameString:propertyName});
+		}		
+	},
+	addNewDoctor: function(propertyName){
+		if(!CDF.isModalVisible){
+			CDF.vent.trigger('CDF.Views.Revenue.RevenueRowView:addNewDoctor',{doctorNameString:propertyName});
 		}		
 	},
 	onEnterUpdate: function(ev) {
@@ -200,78 +240,106 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 			
 		}
 	},
+	updatePaymentType: function(ev){
+		ev.preventDefault();
+		switch(ev.currentTarget.id){
+			case "0":		
+				this.model.set("paymentTypeId",0);
+				this.model.set("paymentTypeName","CASH");
+				break;
+			case "1":
+				this.model.set("paymentTypeId",1);
+				this.model.set("paymentTypeName","CARD");		
+				break;
+		}
+		this.render();		
+	},
 	delete: function(ev) {
 		ev.preventDefault();
-		//CDF.revenueRowsList.remove(this.model);
 		this.model.destroy();
-	},
-	source:function(collection) {
-
-		return function(query,process){
-			var map = this.options.map;
-			collection.fetch({data:{q:query},success: function(){
-				var result = [];
-				var data = collection.toJSON();								
-				 _.each(data,function(element,index,data){
-				 var name = element.firstName+" "+element.lastName+' # '+element._id;
-					 result.push(name);
-				 map[name] = (element._id);
-				});
-
-				process(result);
-			}});
-		}
-
-	},
-	paymentOptionsSource: function(collection) {
-
-		return function(query,process){
-			var map = this.options.map;
-			collection.fetch({data:{q:query},success: function(){
-				var result = [];
-				var data = collection.toJSON();								
-				 _.each(data,function(element,index,data){
-				 var name = element.name;
-					 result.push(name);
-				 map[name] = (element._id);
-				});
-
-				process(result);
-			}});
-		}
-
-	},
-	updater: function(item){
-		 
-	 	 $( "#"+this.options.id ).attr("valueId", this.options.map[ item ] );
-		 return item;
- 
-	},
+	},	
 	render: function() {
 		this.model.set("rowId",this.model.cid,{silent:true});
 		this.$el.html(this.template(this.model.toJSON()));
 
-		this.$('.patientName').typeahead({source:this.source(CDF.patients),updater:this.updater,minLength:3,id:"patientId"+this.model.cid,map:CDF.patientMap});
-		this.$('.doctorName').typeahead({source:this.source(CDF.doctors),updater:this.updater,minLength:3,id:"doctorId"+this.model.cid,map:CDF.doctorsMap});
-		this.$('.paymentTypeName').typeahead({source:this.paymentOptionsSource(CDF.paymentOptions),updater:this.updater,minLength:3,id:"paymentTypeId"+this.model.cid,map:CDF.paymentOptionsMap});
+		this.$('ul.dropdown-menu').html('<li id="0"><a href="#">CASH</a></li><li id="1"><a href="#">CARD</a></li>');
+
+		function source(collection) {
+
+			return function(query,process){
+				var map = this.options.map;
+				collection.fetch({data:{q:query},success: function(){
+					var result = [];
+					var data = collection.toJSON();								
+					 _.each(data,function(element,index,data){
+					 var name = element.firstName+" "+element.lastName+' # '+element._id;
+						 result.push(name);
+					 map[name] = (element._id);
+					});
+
+					process(result);
+				}});
+		}
+
+		};
+
+		function paymentOptionsSource(collection) {
+
+			return function(query,process){
+				var map = this.options.map;
+				collection.fetch({data:{q:query},success: function(){
+					var result = [];
+					var data = collection.toJSON();								
+					 _.each(data,function(element,index,data){
+					 var name = element.name;
+						 result.push(name);
+					 map[name] = (element._id);
+					});
+
+					process(result);
+				}});
+			}
+
+		};
+		function updater(item){
+			 
+		 	 $( "#"+this.options.id ).attr("valueId", this.options.map[ item ] );
+			 return item;
+	 
+		};
+
+		this.$('.patientName').typeahead({source:source(new CDF.Collections.People.Patients()),updater:updater,minLength:3,id:"patientId"+this.model.cid,map:CDF.patientMap});
+		this.$('.doctorName').typeahead({source:source(new CDF.Collections.People.Doctors()),updater:updater,minLength:3,id:"doctorId"+this.model.cid,map:CDF.doctorsMap});
+		this.$('.paymentTypeName').typeahead({source:paymentOptionsSource(new CDF.Collections.Revenue.PaymentOptions()),updater:updater,minLength:3,id:"paymentTypeId"+this.model.cid,map:CDF.paymentOptionsMap});
 		return this;
 	}
 	
 });	
 
 CDF.Views.Revenue.RevenueTableView = Backbone.View.extend({
-	model: CDF.revenueRowsList,
+	model: CDF.Models.Revenue.RevenueRowList,
     events: {
 		'click .new-row' : 'handleNewRowSubmit'		
     },
 	initialize: function() {
 		this.template = _.template($('#revenue-table-template').html());
 		this.$el.html(this.template(this.model.toJSON()));	
+
 		this.model.on('add', this.render, this);
 		this.model.on('remove', this.render, this);
+		this.model.on('reset' , this.render, this);
+
+
+		CDF.vent.on('CDF.Views.Revenue.RevenueRowView:close:amount', this.updateTotal, this);
 		
 		if(this.model.length < 1)
 			this.addNewRow();
+	},
+	onClose: function(){
+		CDF.vent.off('CDF.Views.Revenue.RevenueRowView:close:amount', this.updateTotal, this);
+		this.model.off('add', this.render, this);
+		this.model.off('remove', this.render, this);
+		this.model.off('reset' , this.render, this);
 	},
 	handleNewRowSubmit: function(ev){
 		ev.preventDefault();
@@ -280,7 +348,7 @@ CDF.Views.Revenue.RevenueTableView = Backbone.View.extend({
 	},	
 	addNewRow: function() {
     	var row = new CDF.Models.Revenue.RevenueRow({patientName: "", patientId:CDF.CONSTANTS.NULL, doctorName:"",doctorId:CDF.CONSTANTS.NULL,amount:0,paymentTypeName:"CASH",
-    												 paymentTypeId:0,rowId:0,clinicId:CDF.application.get("clinicId"),date:CDF.application.get("date")});
+    												 paymentTypeId:0,rowId:0,clinicId:0,date:new Date()});
 
     	row.on("invalid", function(model, error) {
 		  alert(error);
@@ -288,7 +356,6 @@ CDF.Views.Revenue.RevenueTableView = Backbone.View.extend({
 
 		this.model.add(row);
 		
-		console.log("new row added: "+row.get("rowId"));
 	},	
 	render: function() {
 
@@ -300,6 +367,8 @@ CDF.Views.Revenue.RevenueTableView = Backbone.View.extend({
 			self.$('#rows-container').append((new CDF.Views.Revenue.RevenueRowView({model: row})).render().$el);
 		});
 		this.$('.total').text("Total : Rs. "+this.model.total());
+		
+
 		return this;
 	},
 	updateTotal: function(){

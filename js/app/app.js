@@ -21,51 +21,160 @@ if(typeof CDF === "undefined"){
         patientMap:  {},
         doctorsMap:  {},
         paymentOptionsMap:{},
-        mainView: null,
-        authView: null,
-        appView: null,
-        application: null,
-        doctors: null,
-        patients: null,
-        clinics: null,
-        paymentOptions: null,
-        auth: null,
-        revenueRowsList: null,
         router:null,
 
         CONSTANTS: {
             NULL: "null",
         },
-        modal: {isVisible: function(){return false}}
+        isModalVisible: false,
+        loggedIn: false,
+        vent: _.extend({}, Backbone.Events)
 
     };
 }
 
 
+/*******************Unbind the bound events to ensure that the views get garbage collected*********/
+
+Backbone.View.prototype.close = function(){
+  this.remove();
+  this.off();
+  this.undelegateEvents();
+
+  if (this.onClose){
+    this.onClose();
+  }
+};
+
+
+/********************Top Level View***********************/
+
+CDF.Views.MainView = Backbone.View.extend({
+    el:  $('#main'),
+    initialize: function(){
+        CDF.vent.on('CDF.Router:index',this.addView,this);
+        CDF.vent.on('CDF.Models.Auth:login:success',this.createAndAddAppView,this);
+    },
+    addView: function(view){
+        if (this.currentView){
+          this.currentView.close();
+        }
+     
+        this.currentView = view;
+        this.currentView.render();
+     
+        this.$el.html(this.currentView.el);
+    },
+    createAndAddAppView: function(authModel){
+        var application = new CDF.Models.Application();
+            application.set({"clinicName":authModel.get('primaryClinicName'),
+            "clinicId":authModel.get('clinics')[0],
+            "userFullname":authModel.get('firstName')+" "+authModel.get('lastName'),
+            "doctorId":authModel.get('doctorId'),
+            "userId":authModel.get('_id'),
+            "date":new Date()
+        });
+
+       var appView = new CDF.Views.AppView({model: application});
+       this.addView(appView);
+    }
+
+
+});
+
+
+/*********************************************************/
 
 CDF.Models.Application = Backbone.Model.extend({
+    url: 'http://192.168.211.132:8080/feedback',
     defaults: {
         date: new Date(),
-        displayDate: "",
-        dateString: "",
-        userName: "",
+        userFullname: "",
+        doctorId: "",
+        userId: "",
         clinicName: "",
         clinicId: ""
     },
-    setClinicName: function(clinic){
-        this.set({clinicName:clinic}); 
+    events: {
+        'change:date' : 'checkReportStatus'
     },
-    setClinicId: function(id){
-        this.set({clinicId:id});
+    initialize: function(){
+        var self = this;
+
+       this.on('change:date',function(){
+            self.checkReportStatus();
+       });
+
+        /*_.bindAll(this,'checkReportStatusAndSubmit');*/
+       CDF.vent.on('CDF.Views.AppView:click:submit',this.checkReportStatusAndSubmit, this);
+       CDF.vent.on('CDF.Collections.RevenueRowList:submitReport',this.processSuccessfulSubmissions, this);
+
     },
-    setUser: function(user){
-        this.set({userName:user});
+    onClose: function(){
+        CDF.vent.off('CDF.Views.AppView:click:submit',this.checkReportStatusAndSubmit, this);
+        CDF.vent.off('CDF.Collectioffs.RevenueRowList:submitReport',this.processSuccessfulSubmissions, this);
     },
-    setDate: function(date){
-        this.set({date:date});
-        this.set({displayDate:this.get("date").toDateString()});
-        this.set({dateString:this.get("date").toISOString("DD.MM.YYYY")});
-    }
+    submitReport: function(){
+        var self = this;
+
+        // save revenue 
+        CDF.vent.trigger('CDF.Models.Application:submitReport', {date:this.get('date'),clinicId:this.get('clinicId')});
+        // CDF.revenueRowsList.submitReport(this.processSuccessfulSubmissions,this);
+        
+        // save bank deposits 
+
+        //....
+
+    },
+    processSuccessfulSubmissions: function(reportName){
+        console.log(reportName+" report submitted successfully");
+
+        if(/*all reports successfully submitted*/true){
+            this.postReportStatus();    
+         }
+        
+    },
+    postReportStatus: function(){
+        var self = this;
+        this.save({},{
+            success: function(model,response,options){
+             self.set('date', new Date());
+             console.log("report posted successfully");
+             CDF.vent.trigger("CDF.Models.Application:postReportStatus","success");
+            },
+            error: function(model, response,options){
+             console.log("report post error");
+             CDF.vent.trigger("CDF.Models.Application:postReportFailed","fail");
+            }
+
+        });
+    },
+    checkReportStatus: function(){
+        var self = this;
+        this.fetch({data:{date:this.get('date'),clinicId:this.get('clinicId')},success: function(model, response, options){
+                    
+            if(response.length > 0 ) {
+                //console.log("report exists for this date");
+                CDF.vent.trigger("CDF.Models.Application:checkReportStatus",true);
+            } else {
+                CDF.vent.trigger("CDF.Models.Application:checkReportStatus",false);
+                //CDF.vent.trigger("CDF.Models.Application:checkReportStatus",false);
+            }
+                
+        }});
+    },
+    checkReportStatusAndSubmit: function(){
+        var self = this;
+        this.fetch({data:{date:this.get('date'),clinicId:this.get('clinicId')},success: function(model, response, options){
+                    
+            if(response.length > 0 ) {
+                console.log("Not saving: today's report exists");
+            } else {
+                self.submitReport();
+            }
+                
+        }});
+    },
 
 
 });
@@ -73,45 +182,114 @@ CDF.Models.Application = Backbone.Model.extend({
 
 
 CDF.Views.AppView  = Backbone.View.extend({
-    el: $('#main'),
+    model:  CDF.Models.Application,
+    //el: $('#main'),
     events: {
-        'click li#revenue a': 'revenue',
-        'click li#submit a': 'submit',
-        'click li#logout a': 'logout',
+        'click li#revenue a': 'addRevenueTableView',
+        'click li#submit a': 'handleSubmitClick',
+        'click li#logout a': 'handleLogoutClick',
+        'changeDate #datetimepicker' : 'changeDate',
+
 
     },
     initialize: function(){
+        var self = this;
         this.template = _.template($('#app-template').html());
         this.$el.html(this.template(this.model.toJSON()));   
-        this.render();
+        this.$('#datetimepicker').datetimepicker({
+          pickTime: false
+        });
+        this.dateTimePicker = this.$('#datetimepicker').data('datetimepicker');
+
+        CDF.vent.on("CDF.Models.Application:checkReportStatus",function(msg){            
+            if(msg) {
+                console.log('report exists!');
+            }
+        },this);
+        CDF.vent.on('CDF.Views.Revenue.RevenueRowView:addNewPatient', this.displayAddPatientModal, this);
+        CDF.vent.on('CDF.Views.Revenue.RevenueRowView:addNewDoctor', this.displayAddDoctorModal, this);
+        //CDF.vent.on('CDF.Views.Utility.Modal:hide', this.removeModal, this);
+    },
+    onClose: function(){
+        CDF.vent.off('CDF.Views.Revenue.RevenueRowView:addNewPatient', this.displayAddPatientModal, this);
+        CDF.vent.off('CDF.Views.Revenue.RevenueRowView:addNewDoctor', this.displayAddDoctorModal, this);
+        CDF.vent.off("CDF.Models.Application:checkReportStatus",function(msg){            
+            if(msg) {
+                console.log('report exists!');
+            }
+        },this);
+        this.dateTimePicker.destroy();
+        
     },
     render: function(){
+        
+        this.dateTimePicker.setLocalDate(this.model.get("date"));
         return this;
+    },
+    removeModal: function(modalObject){
+        //this.remove(modalObject);  
+        //this.render();      
+    },
+    displayAddDoctorModal: function(msg){
+        var names = msg.doctorNameString.split(" ");
+        var addDoctorView = new CDF.Views.People.AddDoctor({model: new CDF.Models.People.Doctor({firstName:names[0],lastName:names[1],active:1,clinics:[this.model.get("clinicId")]})});       
+        var modalModel = new CDF.Models.Utility.Modal({header:"Add Doctor",footer:"",body:addDoctorView.$el});
+        var modal = new CDF.Views.Utility.Modal({model:modalModel});
+        this.addAlertView(modal);
+        modal.show();
+    },
+    displayAddPatientModal: function(msg){
+        var names = msg.patientNameString.split(" ");
+        var addPatientView = new CDF.Views.People.AddPatient({model: new CDF.Models.People.Patient({firstName:names[0],lastName:names[1]})});       
+        var modalModel = new CDF.Models.Utility.Modal({header:"Add Patient",footer:"",body:addPatientView.$el});
+        var modal = new CDF.Views.Utility.Modal({model:modalModel});
+        this.addAlertView(modal);
+        modal.show();
+    },
+    changeDate : function(ev) {
+        ev.preventDefault();
+        this.model.set("date",ev.localDate);
+        this.dateTimePicker.hide();
     },    
-    attachView: function(view){
-        this.$(".content").html(view.$el);
-    },
     addView: function(view){
-        this.$el.append(view.$el);
+        if (this.currentView){
+          this.currentView.close();
+        }
+     
+        this.currentView = view;
+        this.currentView.render();
+     
+        this.$("#content").html(this.currentView.el);
     },
-    revenue: function() {
+    addAlertView: function(view){
+        if (this.currentAlerView){
+          this.currentAlerView.close();
+        }
+     
+        this.currentAlerView = view;
+        this.currentAlerView.render();
+
+        this.$("#alert").html(view.$el);             
+    },
+    addRevenueTableView: function() {
         this.$('ul.nav li#revenue').attr("class","active");
-        CDF.revenueView = new CDF.Views.Revenue.RevenueTableView({model: CDF.revenueRowsList}).render();
-        CDF.mainView.attachView(CDF.revenueView);
-        },
-    submit: function(){
-        if(!CDF.modal.isVisible()){
+        var revenueTableView = new CDF.Views.Revenue.RevenueTableView({model: new  CDF.Collections.Revenue.RevenueRowList()});
+        this.addView(revenueTableView);
+    },
+    handleSubmitClick: function(){
+        if(!CDF.isModalVisible){
           var modalModel = new CDF.Models.Utility.Modal({header:"Submit Report",footer:(new CDF.Views.Submit()).$el,body:"Phew! That was a lot of work! Well, looks like we're ready to submit! Do check if your inputs are correct before pressing the button."});
-          CDF.modal = new CDF.Views.Utility.Modal({model:modalModel});
-          CDF.appView.addView(CDF.modal);
-          CDF.modal.show();
+          var modal = new CDF.Views.Utility.Modal({model:modalModel});
+          this.addAlertView(modal);
+          modal.show();
         }
     },
-    logout: function(){
-         CDF.auth.loggedIn = false;
-         CDF.revenueRowsList.reset();
+    handleLogoutClick: function(){
+         CDF.vent.trigger('CDF.Views.AppView:handleLogoutClick');
+        $('bootstrap-datetimepicker-widget').remove();
          CDF.router.index();
-  }
+    },
+
 });
 
 CDF.Views.Submit = Backbone.View.extend({
@@ -122,17 +300,12 @@ CDF.Views.Submit = Backbone.View.extend({
        this.template =  _.template($("#submit-template").html());
        this.$el.html(this.template({})); 
     },
+    onClose: function(){
+
+    },
     submit: function(ev){
         ev.preventDefault();
-        _.each(CDF.revenueRowsList.models,function(element,index,data){
-             if(parseInt(element.get('patientId'),10)>0){
-                element.save();
-             }
-        });
-        CDF.modal.hide();
-        CDF.revenueRowsList.reset();
-        CDF.mainView = null;
-        CDF.router.index();
+        CDF.vent.trigger("CDF.Views.AppView:click:submit");
     },
 });
 
@@ -159,42 +332,42 @@ CDF.Views.Utility.Modal = Backbone.View.extend({
         this.$('#myModal').modal();
 
         this.$('#myModal').on('hidden', function () {
-            self._visible = false;
+            CDF.isModalVisible = false;
         });
 
-        this._visible = false;
+        CDF.vent.on('CDF.Models.Application:postReportStatus', this.hide, this);
+        CDF.vent.on('CDF.Views.People.AddDoctor:addDoctor:success', this.hide, this);
+        CDF.vent.on('CDF.Views.People.AddPatient:addPatient:success', this.hide, this);
+
+        CDF.isModalVisible = false;
         
     },
+    onClose: function(){
+        CDF.vent.off('CDF.Models.Applicatioff:postReportStatus', this.hide, this);
+        CDF.vent.off('CDF.Views.People.AddDoctor:addDoctor:success', this.hide, this);
+        CDF.vent.off('CDF.Views.People.AddPatient:addPatient:success', this.hide, this);
+    },
     show: function(){
-        if(this._visible === false)
+        if(CDF.isModalVisible === false)
             this.$('#myModal').modal('show');
-        this._visible = true;
+        CDF.isModalVisible = true;
     },
     hide: function(){
         this.$('#myModal').modal('hide');
-        this._visible = false;
+        CDF.isModalVisible = false;
+        CDF.vent.trigger('CDF.Views.Utility.Modal:hide',this);
+        this.remove();
     },
     render: function(){        
         return this;
     },
-    isVisible: function(){
-        return this._visible;
-    }
+
 });
 
 $(document).ready(function() {
     
     CDF.router =  new CDF.Router();   
-
-    CDF.auth = new CDF.Models.Auth(); 
-       
-    CDF.doctors = new CDF.Collections.People.Doctors();
-    CDF.patients = new CDF.Collections.People.Patients();
-    CDF.clinics = new CDF.Collections.Infra.Clinics();
-    CDF.paymentOptions = new CDF.Collections.Revenue.PaymentOptions();
-    CDF.revenueRowsList = new CDF.Collections.Revenue.RevenueRowList();       
-    CDF.application = new CDF.Models.Application();
-    
+    var mainView = new CDF.Views.MainView();
 
     Backbone.history.start({pushState: true, hashChange: true });
 

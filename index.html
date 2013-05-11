@@ -9,7 +9,9 @@
 
     <!-- Le styles -->
     <link href="./css/bootstrap.css" rel="stylesheet" type="text/css"/>
+    <link href="./css/bootstrap-datetimepicker.min.css" rel="stylesheet" type="text/css"/>
     <link href="./css/style.css" rel="stylesheet" type="text/css"/>
+    
     <style type="text/css">
       body {
         padding-top: 60px;
@@ -47,10 +49,6 @@
      <form id="login-form">
           First Name: <input type="text" id="firstname"><br>
           Last Name: <input type="text" id="lastname"><br>
-          Clinic: <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown"><%= selectedClinicName %> <b class="caret"></b></a>
-                    <ul class="dropdown-menu"></ul>
-                  </li> 
           <button id="add-doctor-button">Add Doctor</button>
       </form>
     </script>
@@ -74,8 +72,8 @@
     </script>
     <script type="text/template" id="login-template">
       <form id="login-form">
-        Username: <input type="text" id="username"><br>
-        Password: <input type="password" id="password"><br>
+        Username: <input type="text" id="username" value="divyaGaur"><br>
+        Password: <input type="password" id="password" value="icelemontea"><br>
         <button id="login">Login</button>
       </form>
     </script>
@@ -87,21 +85,24 @@
       <span class="column_prefix">Rs</span>
       <input type="text" class="amount column" autocomplete="off" value= <%= "'"+amount+"'" %> />
 
-      <input type="text" class="paymentTypeName column"  id= <%= "'paymentTypeId"+rowId+"'" %> data-provide="typeahead" autocomplete="off"  value= <%= "'"+paymentTypeName+"'" %>  valueId=  <%= "'"+paymentTypeId+"'" %>  />
+      <div class="btn-group">
+        <button class="btn btn-small dropdown-toggle paymentTypeName" data-toggle="dropdown" valueId=  <%= "'"+paymentTypeId+"'" %> > <%= paymentTypeName %> <span class="caret"></span></button>
+        <ul class="dropdown-menu">
+        </ul>
+      </div>
 
-      <a href="#revenue" class="delete"><i class="icon-remove"></i></a>
+      <a href="#" class="delete"><i class="icon-remove delete-row-icon"></i></a>
     </script>
     <script type="text/template" id="revenue-table-template">
       <h2>Revenue</h2>  
       <label class="tableHeaderColumn">Patient</label> 
       <label class="tableHeaderColumn">Doctor</label>
       <label class="tableHeaderColumn">Amount</label>
-      <label class="tableHeaderColumn">Cash or Card?</label>
 
       <div id="rows-container"></div>
       <button class="btn btn-small new-row" type="button"><i class="icon-plus"></i>Add Row</button>      
       <hr />
-      <label class="total tableHeaderColumn"></label>
+      <label  class="total tableHeaderColumn"></label>
       <hr/>
       
     </script>
@@ -110,11 +111,20 @@
         <div class="navbar-inner">
           <div class="container-fluid">
             <a class="brand" href="#">Clinic Feedback Form</a>
+
             <div class="nav-collapse collapse">
               <ul class="nav pull-right">
-                <li><a href="#"><%= displayDate %></a> </li>
+                <li><a href="#">Report Date:</a></li>
+                <li id="datetimepicker" class="input-append">
+                  <input data-format="dd-MM-yyyy" type="text"></input>
+                  <span class="add-on">
+                    <i data-time-icon="icon-time" data-date-icon="icon-calendar">
+                    </i>
+                  </span>
+                </li>                
+                <li class="divider-vertical"></li> 
                 <li class="dropdown">
-                  <a href="#" class="dropdown-toggle" data-toggle="dropdown"><%= userName %> <b class="caret"></b></a>
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown"> <%= userFullname %><b class="caret"></b></a>
                   <ul class="dropdown-menu">
                     <li id="logout"><a href="#">Logout</a></li>
                   </ul>
@@ -131,27 +141,26 @@
           </div>
         </div>
       </div>
-
       <div class="container-fluid">
         <div class="row-fluid">
           <div class="span2">
-            <div class="well sidebar-nav">
-              <ul class="nav nav-list">
-                <li class="nav-header">Sections</li>
-                <li id="revenue"><a href="#" >Revenue</a></li>
-                <li id="bank-deposits"><a href="#" >Bank Deposits</a></li>
-                <li id="expenditure"><a href="#" >Expenditure</a></li>
-                <li id="dental-materials-needed-recieved" ><a href="#" >Dental Materials Needed/Received</a></li>
-                <li id="patients-feedback"><a href="#" >Patients Feedback</a></li>
-                <li id="complaints-or-problems-in-clinic"><a href="#" >Complaints or Problems in Clinic</a></li>
-                <li id="treatments"><a href="#" >Treatments</a></li>
-                <li id="submit"><a href="#" >Submit</a></li>
-
-              </ul>
-            </div><!--/.well -->
+          <div class="well" style="padding: 8px 0">
+            <ul class="nav nav-list">
+              <li id="revenue"><a href="#" ></i>Revenue</a></li>
+              <li id="bank-deposits"><a href="#" ></i>Bank Deposits</a></li>
+              <li id="expenditure"><a href="#" ></i>Expenditure</a></li>
+              <li id="dental-materials-needed-recieved" ><a href="#" ></i>Dental Materials</a></li>              
+              <li id="treatments"><a href="#" ></i>Treatments</a></li>
+              <li id="patients-feedback"><a href="#" ></i>Patients Feedback</a></li>
+              <li id="complaints-or-problems-in-clinic"><a href="#" ></i>Clinic Issues</a></li>
+              <li class="divider"></li>
+              <li id="submit"><a href="#" ></i>Submit</a></li>
+            </ul>
+          </div>
           </div><!--/span-->
           <div class="span10">
-            <div class="content"><h3>Welcome! Please choose an option on the left!</h3></div>
+            <div id="content"><h3>Welcome! Please choose an option on the left!</h3></div>
+            <div id ="alert"></div>
           </div><!--/span-->
         </div><!--/row-->
 
@@ -175,6 +184,7 @@
     <script src="./js/lib/jquery.js"></script>
     <script src="./js/lib/backbone.js"></script>
     <script src="./js/lib/bootstrap.js"></script>
+    <script src="./js/lib/bootstrap-datetimepicker.min.js"></script>
     <!-- Application -->
     <script src="./js/app/app.js"></script>
     <!-- Router -->
