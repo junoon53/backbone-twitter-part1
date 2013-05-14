@@ -35,6 +35,7 @@ CDF.Models.Revenue.RevenueRow = Backbone.Model.extend({
 
 CDF.Collections.Revenue.RevenueRowList = Backbone.Collection.extend({
 	url: 'http://192.168.211.132:8080/revenue',
+	model: CDF.Models.Revenue.RevenueRow,
 	initialize: function(){
 		var self = this;
 
@@ -79,11 +80,10 @@ CDF.Collections.Revenue.RevenueRowList = Backbone.Collection.extend({
 		return _.reject(models,function(element){return !element.isValid()});
 	},
 	submitReport: function(msg){
-		console.log(this.cid);
-		_.each(this.removeEmptyRows(this.models),function(element,index,data){
+			_.each(this.removeEmptyRows(this.models),function(element,index,data){
                 element.set('date',msg.date,{silent:true});   
                 element.set('clinicId',msg.clinicId,{silent:true});
-                element.save({},{
+                element.save(element.attributes,{
 
                     success: function(model, response, options){
                         console.log(response);
@@ -329,7 +329,7 @@ CDF.Views.Revenue.RevenueTableView = Backbone.View.extend({
 		this.rowViews = [];
 
 		this.listenTo(CDF.vent,'CDF.Views.Revenue.RevenueRowView:exitColumn:amount', this.updateTotal, this);
-		this.listenTo(this.model,'reset' , this.removeAllRowView);
+		this.listenTo(this.model,'reset' , this.removeAllRowViews);
 		
 	},
 	onClose: function(){
