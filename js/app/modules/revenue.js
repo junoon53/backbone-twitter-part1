@@ -35,16 +35,17 @@ CDF.Models.Revenue.RevenueRow = Backbone.Model.extend({
 
 CDF.Collections.Revenue.RevenueRowList = Backbone.Collection.extend({
 	url: 'http://192.168.211.132:8080/revenue',
-	model: CDF.Models.Revenue.RevenueRow,
 	initialize: function(){
 		var self = this;
 
-		//_.bindAll(this,'resetMe'/*, 'submitReport'*/);
-		CDF.vent.on('CDF.Models.Application:postReportStatus', this.reset, this);
-		CDF.vent.on('CDF.Views.AppView:handleLogoutClick', this.reset, this);
-		CDF.vent.on('CDF.Models.Application:submitReport', this.submitReport, this);
+		this.listenTo(CDF.vent,'CDF.Models.Application:postReportStatus', this.reset);
+		this.listenTo(CDF.vent,'CDF.Views.AppView:handleLogoutClick', this.reset);
+		this.listenTo(CDF.vent,'CDF.Models.Application:submitReport', this.submitReport);
 
     },
+    onClose: function(){
+
+    },    
 	total: function() {
 		this._total = 0;
 		var self = this;
@@ -74,8 +75,12 @@ CDF.Collections.Revenue.RevenueRowList = Backbone.Collection.extend({
 	rowCount: function(){
 		return this.models.length;
 	},
+	removeEmptyRows: function(models){
+		return _.reject(models,function(element){return !element.isValid()});
+	},
 	submitReport: function(msg){
-		_.each(_.reject(this.models,function(element){return !element.isValid()},this),function(element,index,data){
+		console.log(this.cid);
+		_.each(this.removeEmptyRows(this.models),function(element,index,data){
                 element.set('date',msg.date,{silent:true});   
                 element.set('clinicId',msg.clinicId,{silent:true});
                 element.save({},{
@@ -102,21 +107,19 @@ CDF.Collections.Revenue.RevenueRowList = Backbone.Collection.extend({
 
 CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 	model: new CDF.Models.Revenue.RevenueRow(),
-	tagName: 'div',
 	className: 'revenueRow',
-	//id: this.cid,
 	events: {
 		'click .column': 'edit',
 		'click .delete': 'delete',
-		'blur .column': 'close',
+		'blur .column': 'exitColumn',
 		'keypress .column': 'onEnterUpdate',
 		'click ul.dropdown-menu li': 'updatePaymentType'					
 	},
 	initialize: function() {
 		this.template = _.template($('#revenue-row-template').html());
+		this.listenTo(this.model,'remove',this.delete);
 	},
 	onClose: function(){
-
 	},
 	edit: function(ev) {
 		ev.preventDefault();
@@ -145,7 +148,7 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 		}
 	
 	},
-	close: function(ev) {
+	exitColumn: function(ev) {
 		var element = null;
 		var propertyName = ev.currentTarget.className.split(" ")[0];
 		switch(propertyName){
@@ -160,7 +163,7 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 			case "amount":
 				element = this.$('.amount');
 				setElementValue.call(this);
-				CDF.vent.trigger('CDF.Views.Revenue.RevenueRowView:close:amount');
+				CDF.vent.trigger('CDF.Views.Revenue.RevenueRowView:exitColumn:amount');
 				break;
 			case "paymentTypeName":
 				element = this.$('.paymentTypeName');
@@ -221,7 +224,7 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 	onEnterUpdate: function(ev) {
 		var self = this;
 		if (ev.keyCode === 13) {
-			this.close(ev);
+			this.exitColumn(ev);
 
 			switch(ev.currentTarget.className.split(" ")[0]){
 			case "patientName":
@@ -256,7 +259,7 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 	},
 	delete: function(ev) {
 		ev.preventDefault();
-		this.model.destroy();
+		this.close();
 	},	
 	render: function() {
 		this.model.set("rowId",this.model.cid,{silent:true});
@@ -317,29 +320,22 @@ CDF.Views.Revenue.RevenueRowView = Backbone.View.extend({
 });	
 
 CDF.Views.Revenue.RevenueTableView = Backbone.View.extend({
-	model: CDF.Models.Revenue.RevenueRowList,
     events: {
 		'click .new-row' : 'handleNewRowSubmit'		
     },
 	initialize: function() {
 		this.template = _.template($('#revenue-table-template').html());
-		this.$el.html(this.template(this.model.toJSON()));	
-
-		this.model.on('add', this.render, this);
-		this.model.on('remove', this.render, this);
-		this.model.on('reset' , this.render, this);
-
-
-		CDF.vent.on('CDF.Views.Revenue.RevenueRowView:close:amount', this.updateTotal, this);
 		
-		if(this.model.length < 1)
-			this.addNewRow();
+		this.rowViews = [];
+
+		this.listenTo(CDF.vent,'CDF.Views.Revenue.RevenueRowView:exitColumn:amount', this.updateTotal, this);
+		this.listenTo(this.model,'reset' , this.removeAllRowView);
+		
 	},
 	onClose: function(){
-		CDF.vent.off('CDF.Views.Revenue.RevenueRowView:close:amount', this.updateTotal, this);
-		this.model.off('add', this.render, this);
-		this.model.off('remove', this.render, this);
-		this.model.off('reset' , this.render, this);
+
+		this.removeAllRowViews();
+
 	},
 	handleNewRowSubmit: function(ev){
 		ev.preventDefault();
@@ -349,29 +345,30 @@ CDF.Views.Revenue.RevenueTableView = Backbone.View.extend({
 	addNewRow: function() {
     	var row = new CDF.Models.Revenue.RevenueRow({patientName: "", patientId:CDF.CONSTANTS.NULL, doctorName:"",doctorId:CDF.CONSTANTS.NULL,amount:0,paymentTypeName:"CASH",
     												 paymentTypeId:0,rowId:0,clinicId:0,date:new Date()});
+    	this.model.add(row);
 
-    	row.on("invalid", function(model, error) {
-		  alert(error);
-		});
+    	var rowView = new CDF.Views.Revenue.RevenueRowView({model: row});
+    	rowView.render();    			
 
-		this.model.add(row);
+    	this.rowViews.push(rowView);
+		this.$('#rows-container').append((rowView.$el));
 		
-	},	
+	},
+	removeAllRowViews: function() {
+		//this.$('#rows-container').html('');
+		for(var i=0;i<this.rowViews.length;i++){
+			this.rowViews[i].close();
+		}
+		this.$('.total').text("");
+	},
 	render: function() {
 
 		var self = this;
-		
-		this.$('#rows-container').html('');
-							
-		_.each(this.model.toArray(), function(row, i) {
-			self.$('#rows-container').append((new CDF.Views.Revenue.RevenueRowView({model: row})).render().$el);
-		});
-		this.$('.total').text("Total : Rs. "+this.model.total());
-		
-
+		this.$el.html(this.template(this.model.toJSON()));	
 		return this;
 	},
 	updateTotal: function(){
+
 		this.$('.total').text("Total : Rs. "+this.model.total());
 	}
 });

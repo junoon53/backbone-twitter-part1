@@ -15,10 +15,9 @@ CDF.Models.Auth = Backbone.Model.extend({
 	},
     initialize: function() {
         var self = this;
-        CDF.vent.on('CDF.Views.AppView:handleLogoutClick',this.logout,this);
+        this.listenTo(CDF.vent,'CDF.Views.AppView:handleLogoutClick',this.logout);
     },
     onClose: function(){
-        CDF.vent.off('CDF.Views.AppView:handleLogoutClick',this.logout,this);
     },
     logout: function(){
 
@@ -59,7 +58,6 @@ CDF.Models.Auth = Backbone.Model.extend({
 
 CDF.Views.AuthView = Backbone.View.extend({
 	model: new CDF.Models.Auth(),
-	//el: $('#main'),
 	events: {
         "click #login": "handleLoginClick"
   	},
